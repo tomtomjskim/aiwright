@@ -197,15 +197,21 @@ aiwright.config.yaml          # 프로젝트 설정 + Recipe 정의
 
 init 직후 출력 예시:
 ```
-aiwright initialized!
+✔ Created aiwright.config.yaml
+  Adapter: claude-code
+✔ Created .aiwright/fragments/
+✔ Created .aiwright/scores/
+✔ Created .aiwright/manifest.yaml
 
-  Detected: Claude Code (.claude/ directory found)
-  Recommended: constraint-no-hallucination, system-role-engineer
+Copying built-in fragments:
+  + constraint-concise.md
+  + constraint-no-hallucination.md
+  + output-json.md
+  + output-markdown.md
+  + system-role-engineer.md
 
-  Next steps:
-    aiwright apply default        Apply the default recipe
-    aiwright list                 Browse available fragments
-    aiwright create --name my-frag  Create a custom fragment
+aiwright initialized successfully!
+  Run `aiwright list` to see available fragments.
 ```
 
 ### `aiwright create`
@@ -265,11 +271,9 @@ aiwright apply default --diff
 
 적용 결과 예시:
 ```
-Applied recipe "tdd-developer" via claude-code adapter
-  Fragments: system-role-engineer(system:30), constraint-test-first(constraint:40),
-             constraint-no-hallucination(constraint:50), output-markdown(output:50)
-  Output: CLAUDE.md (section: ## AI Prompt Configuration)
-  Manifest: .aiwright/manifest.yaml updated
+✔ Applied recipe default
+  → CLAUDE.md
+  Applied to CLAUDE.md via aiwright markers
 ```
 
 CLAUDE.md에 `<!-- aiwright:start -->` / `<!-- aiwright:end -->` 마커로 관리됩니다.
@@ -292,19 +296,23 @@ aiwright list --format json
 
 출력 예시:
 ```
-Fragments (local: 3, built-in: 5)
-  NAME                            SLOT         PRI  TAGS
-  code-review-expert              system        30  review, quality
-  constraint-no-hallucination     constraint    50  safety
-  constraint-test-first           constraint    40  tdd
-  system-role-engineer            system        50  general
-  output-markdown                 output        50  format
-  ...
+Fragments
+────────────────────────────────────────────────────────────────────
+NAME                          SLOT          PRI  LAYER    DESCRIPTION
+────────────────────────────────────────────────────────────────────
+constraint-concise            constraint    60   local    Encourage concise, focused responses
+constraint-no-hallucination   constraint    50   local    Prevent generating unverified information
+output-markdown               output        50   local    Format output as Markdown
+system-role-engineer          system        50   local    Software engineer system role definition
+────────────────────────────────────────────────────────────────────
+5 fragment(s)
 
-Recipes (2)
-  NAME            ADAPTER       FRAGMENTS
-  default         claude-code   3 fragments
-  tdd-developer   claude-code   4 fragments
+Recipes
+────────────────────────────────────────────────────────────────────
+NAME       ADAPTER       FRAGS  DESCRIPTION
+────────────────────────────────────────────────────────────────────
+default    claude-code   3      Default recipe
+────────────────────────────────────────────────────────────────────
 ```
 
 ### `aiwright bench`
@@ -580,22 +588,28 @@ aiwright apply default
 
 적용 후 CLAUDE.md:
 ```markdown
-# My Project
-
-기존 프로젝트 설명...
-
 <!-- aiwright:start -->
-## AI Prompt Configuration (managed by aiwright)
+You are a senior software engineer.
 
-당신은 시니어 TypeScript 개발자입니다.
+You write clean, maintainable, and well-tested code.
+You follow established patterns and conventions in the codebase.
+You explain your reasoning when making architectural decisions.
 
-## 제약 조건
-확인되지 않은 정보를 생성하지 마세요.
+Do not generate unverified or fabricated information.
+If you are uncertain about something, say "I'm not sure" rather than guessing.
+When making assumptions, explicitly mark them as assumptions.
+Always prefer reading actual code over making assumptions about its content.
 
-## 출력 형식
-Markdown 형식으로 응답하세요.
+Format your responses using Markdown:
+- Use headers (##) for sections
+- Use code blocks with language tags for code
+- Use bullet points for lists
+- Use bold for emphasis on key terms
+- Use tables when comparing multiple items
 <!-- aiwright:end -->
 ```
+
+기존 CLAUDE.md 내용이 있으면 마커 밖에 그대로 보존됩니다.
 
 ### Generic (stdout)
 
