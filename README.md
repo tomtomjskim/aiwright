@@ -9,7 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-green.svg)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg)](https://typescriptlang.org)
-[![Tests](https://img.shields.io/badge/Tests-165%20passed-brightgreen.svg)](#testing)
+[![Tests](https://img.shields.io/badge/Tests-523%20passed-brightgreen.svg)](#testing)
 
 [Quick Start](#-quick-start) &#8226;
 [Architecture](#-architecture) &#8226;
@@ -117,37 +117,45 @@ graph LR
 npm install -g @jsnetworkcorp/aiwright
 
 cd your-project
-aiwright init --adapter claude-code --with-builtins
-aiwright apply default
-aiwright score default --set 0.85 --note "works well"
+aiwright init --with-builtins    # One-time setup
+aiwright apply default           # That's it. Everything else is automatic.
+```
+
+**Output:**
+```
+✔ Applied "default" (3 fragments) → .claude/CLAUDE.md
+  DNA: AW-S9R7I1 | Score: 0.88 | Lint: clean
+  Tip: Add example slot to improve consistency
+```
+
+Score, profile, lint, and DNA — all computed automatically on every `apply`.
+
+### Slash Commands (Claude Code)
+
+`aiwright init` auto-installs 6 Claude Code skills:
+
+```
+/aiwright-help          Show all available commands
+/aiwright-apply         Apply recipe + auto-analyze
+/aiwright-status        View your AI usage profile
+/aiwright-improve       Get optimization suggestions
+/aiwright-lint          Check for prompt anti-patterns
+/aiwright-skill-tree    View your skill progression
 ```
 
 <details>
-<summary><b>See it in action</b></summary>
+<summary><b>Full init output</b></summary>
 
 ```
-$ aiwright init --adapter claude-code --with-builtins
+$ aiwright init --with-builtins
 
-✔ Created aiwright.config.yaml
-  Adapter: claude-code
+✔ Created aiwright.config.yaml (claude-code)
 ✔ Created .aiwright/fragments/
 ✔ Created .aiwright/scores/
 ✔ Created .aiwright/manifest.yaml
-
-Copying built-in fragments:
-  + constraint-concise.md
-  + constraint-no-hallucination.md
-  + output-json.md
-  + output-markdown.md
-  + system-role-engineer.md
-
-aiwright initialized successfully!
-
-$ aiwright apply default
-
-✔ Applied recipe default
-  → CLAUDE.md
-  Applied to CLAUDE.md via aiwright markers
+  + 5 built-in fragments copied
+✔ Installed 6 Claude Code skills (/aiwright-status, /aiwright-improve, ...)
+  Use /aiwright-help for slash commands, or `aiwright apply default` to start.
 ```
 
 </details>
@@ -160,7 +168,7 @@ $ aiwright apply default
 graph TB
     User["Developer"] --> CLI["CLI Commands<br/>init · add · create · apply<br/>list · bench · score"]
 
-    CLI --> Profile["User Profile Engine<br/><i>Phase 2</i>"]
+    CLI --> Profile["User Profile Engine"]
     CLI --> Core["Core Engine"]
 
     Profile --> |"patterns<br/>& scores"| ProfileDB[("~/.aiwright/<br/>profile.yaml")]
@@ -176,9 +184,11 @@ graph TB
     Compose --> Adapter
 
     subgraph Adapter["Adapters"]
-        CC["Claude Code<br/>CLAUDE.md"]
+        CC["Claude Code<br/>.claude/CLAUDE.md"]
+        CU["Cursor<br/>.cursorrules"]
+        CP["Copilot<br/>copilot-instructions"]
+        WS["Windsurf<br/>.windsurfrules"]
         GN["Generic<br/>stdout"]
-        CU["Cursor<br/><i>coming soon</i>"]
     end
 
     Adapter --> Target["AI Tool"]
@@ -401,23 +411,17 @@ aiwright apply default          # Apply recipe
 aiwright apply default --dry-run  # Preview without writing
 ```
 
-Result in CLAUDE.md:
-```markdown
-<!-- aiwright:start -->
-You are a senior software engineer.
-...
-Do not generate unverified or fabricated information.
-...
-Format your responses using Markdown.
-...
-<!-- aiwright:end -->
+Result in `.claude/CLAUDE.md` (root CLAUDE.md untouched):
+```
+✔ Applied "default" (3 fragments) → .claude/CLAUDE.md
+  DNA: AW-S9R7I1 | Score: 0.88 | Lint: clean
 ```
 
-### Measure quality
+### Check status
 
 ```bash
-aiwright score default --set 0.85 --note "works well"
-aiwright score default --trend    # ASCII chart over time
+aiwright status     # Profile + weaknesses + drift in one screen
+aiwright improve    # Optimization + evolution + kata suggestions
 ```
 
 ### Benchmark
@@ -456,7 +460,7 @@ recipes:
 
 | Adapter | Target File | Status |
 |---------|-------------|--------|
-| **claude-code** | `CLAUDE.md` | Available |
+| **claude-code** | `.claude/CLAUDE.md` | Available |
 | **generic** | stdout | Available |
 | **cursor** | `.cursorrules` | Available |
 | **copilot** | `.github/copilot-instructions.md` | Available |
@@ -495,13 +499,14 @@ graph LR
 
 ## Roadmap
 
-- [x] **Phase 1**: Prompt Library — Fragment/Recipe, CLI, Claude Code Adapter, Scoring
-- [x] **Phase 2a**: Profile Engine — 6-axis Style, Prompt DNA, Linter (8 rules), Weakness Diagnosis
-- [x] **Phase 2b**: Behavior Analysis — PCR/FTRR metrics, Adaptive AI, Linter (4 rules)
-- [x] **Phase 2c**: Visualization & Team — Skill Tree, Prompt Kata, Team Dashboard, Git AI-Trace
-- [x] **Phase 3**: Drift Detection — Drift Detection (3-level), LLM-as-Judge (simulation), Self-tuning
-- [x] **Phase 4**: Multi-Adapter — Cursor, Copilot, Windsurf
-- [ ] **Phase 5**: Advanced — Bayesian Optimization, Dual Evolution
+- [x] **Phase 1**: Prompt Library — Fragment/Recipe/Adapter/Scoring
+- [x] **Phase 2**: User Intelligence — Profile/DNA/Linter/Behavior/SkillTree/Kata/Team
+- [x] **Phase 3**: Drift Detection — 3-level alerting, LLM-as-Judge, Self-tuning
+- [x] **Phase 4**: Multi-Adapter — Cursor, Copilot, Windsurf (+ Claude Code)
+- [x] **Phase 5**: Advanced — Bayesian Optimization, Dual Evolution
+- [x] **Zero-Friction UX** — `apply` one command does everything
+- [x] **Claude Code Skills** — 6 slash commands (`/aiwright-*`)
+- [x] **LLM Tool Boilerplate** — `tools.json` for Codex/other agents
 
 ---
 

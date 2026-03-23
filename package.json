@@ -1,7 +1,7 @@
 {
   "name": "@jsnetworkcorp/aiwright",
-  "version": "0.1.0",
-  "description": "Composable, measurable, shareable AI prompt library framework for TypeScript",
+  "version": "1.0.0",
+  "description": "AI Usage Intelligence Framework — profile, diagnose, and improve how you use AI",
   "type": "module",
   "bin": {
     "aiwright": "./dist/cli.mjs"

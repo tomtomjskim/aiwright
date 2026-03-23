@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-03-23
+
+### Added
+- **Zero-Friction UX**: `apply` one command does everything (auto-score + auto-profile + lint + compact summary)
+- **`aiwright status`**: Profile + weaknesses + drift in one screen
+- **`aiwright improve [recipe]`**: Optimize + evolve + kata integrated guide
+- **`aiwright hooks install/remove`**: Claude Code PreCompact hook auto-registration
+- **auto-score**: heuristic(0.4) + llm-judge(0.6) blended scoring on every apply
+- **compact summary**: `DNA: AW-S9E0I1 | Score: 0.82 | Lint: clean` one-line output
+- **Claude Code Skills**: 6 slash commands auto-installed on init
+  - `/aiwright-help`, `/aiwright-apply`, `/aiwright-status`
+  - `/aiwright-improve`, `/aiwright-lint`, `/aiwright-skill-tree`
+- **LLM Tool Boilerplate**: `.aiwright/tools.json` (OpenAI function calling compatible)
+- **Phase 5: Bayesian Optimization + Dual Evolution**
+  - `optimizer.ts`: Bayesian-like combination search (heuristic-based, zero LLM cost)
+  - `evolution.ts`: Fragment improvement suggestions (make_imperative, clarify, add_example, strengthen)
+  - `aiwright intelligence optimize/evolve` CLI commands
+
+### Changed
+- `apply` output: compact 2-3 line summary (was verbose multi-line)
+- `init` now auto-installs Claude Code skills + tools.json
+- Claude Code adapter: writes to `.claude/CLAUDE.md` (root `CLAUDE.md` untouched)
+- Built-in fragments v0.2.0 (imperative language)
+
 ## [0.5.0] - 2026-03-23
 
 ### Added
