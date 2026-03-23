@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "aiwright",
+  "description": "AI Usage Intelligence Framework — profile, diagnose, and improve AI prompt quality",
+  "tools": [
+    {
+      "name": "aiwright_apply",
+      "description": "Apply a recipe to generate AI prompt configuration. Auto-scores, profiles, and lints.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "recipe": {
+            "type": "string",
+            "description": "Recipe name (default: 'default')",
+            "default": "default"
+          },
+          "quiet": {
+            "type": "boolean",
+            "description": "Minimal 1-line output",
+            "default": false
+          }
+        }
+      },
+      "command": "aiwright apply {recipe}"
+    },
+    {
+      "name": "aiwright_status",
+      "description": "View AI usage profile: DNA code, style scores, weaknesses, drift status.",
+      "parameters": { "type": "object", "properties": {} },
+      "command": "aiwright status"
+    },
+    {
+      "name": "aiwright_improve",
+      "description": "Get optimization suggestions, fragment evolution ideas, and training challenges.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "recipe": {
+            "type": "string",
+            "description": "Recipe to improve (default: 'default')",
+            "default": "default"
+          }
+        }
+      },
+      "command": "aiwright improve {recipe}"
+    },
+    {
+      "name": "aiwright_lint",
+      "description": "Run Prompt Smell Linter — 12 anti-pattern rules (PS001-PS012).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "recipe": { "type": "string", "default": "default" },
+          "severity": {
+            "type": "string",
+            "enum": ["HIGH", "WARN", "INFO"],
+            "default": "INFO"
+          }
+        }
+      },
+      "command": "aiwright lint {recipe} --severity {severity}"
+    },
+    {
+      "name": "aiwright_skill_tree",
+      "description": "Display prompt engineering skill tree with mastery levels.",
+      "parameters": { "type": "object", "properties": {} },
+      "command": "aiwright intelligence skill-tree"
+    }
+  ]
+}

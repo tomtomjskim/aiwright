@@ -10,6 +10,7 @@ export default defineConfig([
     sourcemap: true,
     onSuccess: async () => {
       cpSync('src/builtins', 'dist/builtins', { recursive: true });
+      cpSync('src/boilerplate', 'dist/boilerplate', { recursive: true });
     },
   },
   {

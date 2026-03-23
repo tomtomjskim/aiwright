@@ -43,6 +43,39 @@ async function detectAdapter(projectDir: string): Promise<string> {
   return 'generic';
 }
 
+async function installSkills(projectDir: string): Promise<number> {
+  const skillsDir = new URL('./boilerplate/claude-skills', import.meta.url).pathname;
+  const targetDir = path.join(projectDir, '.claude', 'commands');
+  await ensureDir(targetDir);
+
+  let count = 0;
+  try {
+    const entries = await fs.readdir(skillsDir, { withFileTypes: true });
+    const files = entries.filter((e) => e.isFile() && e.name.endsWith('.md')).map((e) => e.name);
+    for (const file of files) {
+      const src = path.join(skillsDir, file);
+      const dest = path.join(targetDir, file);
+      const content = await fs.readFile(src, 'utf-8');
+      await writeFileEnsure(dest, content);
+      count++;
+    }
+  } catch {
+    // skills 디렉터리 없으면 무시
+  }
+  return count;
+}
+
+async function installToolsJson(projectDir: string): Promise<void> {
+  const toolsSrc = new URL('./boilerplate/tools/aiwright-tools.json', import.meta.url).pathname;
+  const dest = path.join(projectDir, '.aiwright', 'tools.json');
+  try {
+    const content = await fs.readFile(toolsSrc, 'utf-8');
+    await writeFileEnsure(dest, content);
+  } catch {
+    // tools.json 없으면 무시
+  }
+}
+
 async function copyBuiltins(projectDir: string): Promise<string[]> {
   const builtinsDir = new URL('./builtins', import.meta.url).pathname;
   const targetDir = path.join(projectDir, '.aiwright', 'fragments');
@@ -138,8 +171,17 @@ export function registerInitCommand(program: Command): void {
           }
         }
 
+        // Claude Code skills 설치
+        const skillCount = await installSkills(projectDir);
+        if (skillCount > 0) {
+          console.log(chalk.green('✔') + ` Installed ${chalk.bold(String(skillCount))} Claude Code skills (${chalk.dim('/aiwright-status, /aiwright-improve, ...')})`);
+        }
+
+        // LLM tools.json 설치
+        await installToolsJson(projectDir);
+
         console.log('\n' + chalk.bold.green('aiwright initialized successfully!'));
-        console.log(chalk.dim('  Run `aiwright list` to see available fragments.'));
+        console.log(chalk.dim('  Use /aiwright-help for slash commands, or `aiwright apply default` to start.'));
 
         // Hook 설치 제안 (--no-hooks 없을 때)
         if (opts.hooks !== false) {
