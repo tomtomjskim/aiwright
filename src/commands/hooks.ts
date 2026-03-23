@@ -63,6 +63,38 @@ async function writeSettings(filePath: string, settings: ClaudeSettings): Promis
   await fs.writeFile(filePath, JSON.stringify(settings, null, 2) + '\n', 'utf-8');
 }
 
+/**
+ * 프로그래밍 방식으로 hook 설치 (init에서 호출)
+ */
+export async function installHookDirect(projectDir: string, recipe = 'default'): Promise<boolean> {
+  try {
+    const filePath = settingsPath(projectDir);
+    const aiwrightPath = await resolveAiwrightPath();
+    const hookCommand = `${aiwrightPath} apply ${recipe} --quiet`;
+
+    const settings = await readSettings(filePath);
+    if (!settings.hooks) settings.hooks = {};
+    if (!Array.isArray(settings.hooks.PreCompact)) settings.hooks.PreCompact = [];
+
+    const existing = settings.hooks.PreCompact.find(
+      (entry) =>
+        Array.isArray(entry.hooks) &&
+        entry.hooks.some((h: Record<string, unknown>) => h[AIWRIGHT_HOOK_MARKER] === true),
+    );
+    if (existing) return false; // 이미 설치됨
+
+    settings.hooks.PreCompact.push({
+      matcher: '',
+      hooks: [{ type: 'command', command: hookCommand, [AIWRIGHT_HOOK_MARKER]: true }],
+    });
+
+    await writeSettings(filePath, settings);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function registerHooksCommand(program: Command): void {
   const hooksCmd = program
     .command('hooks')

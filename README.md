@@ -117,9 +117,14 @@ graph LR
 npm install -g @jsnetworkcorp/aiwright
 
 cd your-project
-aiwright init --with-builtins    # One-time setup
-aiwright apply default           # That's it. Everything else is automatic.
+aiwright init --with-builtins
 ```
+
+**That's it.** One command. Everything else is automatic:
+- Prompt fragments composed and applied to `.claude/CLAUDE.md`
+- Quality scored (DNA + heuristic + lint)
+- Claude Code hook installed (auto-reapply on long sessions)
+- 6 slash commands ready (`/aiwright-help`)
 
 **Output:**
 ```

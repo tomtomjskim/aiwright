@@ -180,33 +180,35 @@ export function registerInitCommand(program: Command): void {
         // LLM tools.json 설치
         await installToolsJson(projectDir);
 
-        console.log('\n' + chalk.bold.green('aiwright initialized successfully!'));
-        console.log(chalk.dim('  Use /aiwright-help for slash commands, or `aiwright apply default` to start.'));
+        // Auto-apply default recipe
+        try {
+          const { execFile } = await import('node:child_process');
+          const { promisify } = await import('node:util');
+          const execFileAsync = promisify(execFile);
+          const cliPath = new URL('./cli.js', import.meta.url).pathname;
+          const { stdout } = await execFileAsync('node', [cliPath, 'apply', 'default', '--quiet'], { cwd: projectDir });
+          if (stdout.trim()) console.log(stdout.trim());
+          console.log(chalk.green('✔') + ' Auto-applied default recipe');
+        } catch {
+          // apply 실패해도 init 자체는 성공
+          console.log(chalk.dim('  Tip: Run `aiwright apply default` to generate .claude/CLAUDE.md'));
+        }
 
-        // Hook 설치 제안 (--no-hooks 없을 때)
+        // Auto-install hooks (--no-hooks 없을 때)
         if (opts.hooks !== false) {
-          const isTTY = process.stdout.isTTY;
-          if (!isTTY) {
-            // 비대화형 환경: 자동 설치
-            try {
-              const { registerHooksCommand } = await import('./hooks.js');
-              const { Command: SubCommand } = await import('commander');
-              const sub = new SubCommand();
-              registerHooksCommand(sub);
-              // 자동 설치 메시지
-              console.log(chalk.dim('\n  Auto-installing PreCompact hook...'));
-              // hooks install 로직 직접 실행
-              const hooksInstallCmd = sub.commands.find((c) => c.name() === 'hooks');
-              if (hooksInstallCmd) {
-                await hooksInstallCmd.parseAsync(['install'], { from: 'user' });
-              }
-            } catch {
-              // hook 설치 실패 시 무시 (init 결과에 영향 없음)
+          try {
+            const { installHookDirect } = await import('./hooks.js');
+            const installed = await installHookDirect(projectDir, 'default');
+            if (installed) {
+              console.log(chalk.green('✔') + ' Hook installed: Claude Code (PreCompact auto-apply)');
             }
-          } else {
-            console.log(chalk.dim('\n  Tip: Run `aiwright hooks install` to auto-apply on PreCompact.'));
+          } catch {
+            // hook 실패 무시
           }
         }
+
+        console.log('\n' + chalk.bold.green('aiwright ready!'));
+        console.log(chalk.dim('  /aiwright-help for commands. Everything runs automatically now.'));
       } catch (err) {
         if (err instanceof Error) {
           console.error(chalk.red(`Error [E005]: ${err.message}`));
