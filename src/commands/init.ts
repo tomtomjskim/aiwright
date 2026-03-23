@@ -79,7 +79,8 @@ export function registerInitCommand(program: Command): void {
     .description('Initialize aiwright in the current project')
     .option('--adapter <name>', 'Adapter to use (claude-code, cursor, generic)')
     .option('--with-builtins', 'Copy built-in fragments to .aiwright/fragments/')
-    .action(async (opts: { adapter?: string; withBuiltins?: boolean }) => {
+    .option('--no-hooks', 'Skip hook installation prompt')
+    .action(async (opts: { adapter?: string; withBuiltins?: boolean; hooks?: boolean }) => {
       const projectDir = process.cwd();
       const configPath = path.join(projectDir, 'aiwright.config.yaml');
 
@@ -139,6 +140,31 @@ export function registerInitCommand(program: Command): void {
 
         console.log('\n' + chalk.bold.green('aiwright initialized successfully!'));
         console.log(chalk.dim('  Run `aiwright list` to see available fragments.'));
+
+        // Hook 설치 제안 (--no-hooks 없을 때)
+        if (opts.hooks !== false) {
+          const isTTY = process.stdout.isTTY;
+          if (!isTTY) {
+            // 비대화형 환경: 자동 설치
+            try {
+              const { registerHooksCommand } = await import('./hooks.js');
+              const { Command: SubCommand } = await import('commander');
+              const sub = new SubCommand();
+              registerHooksCommand(sub);
+              // 자동 설치 메시지
+              console.log(chalk.dim('\n  Auto-installing PreCompact hook...'));
+              // hooks install 로직 직접 실행
+              const hooksInstallCmd = sub.commands.find((c) => c.name() === 'hooks');
+              if (hooksInstallCmd) {
+                await hooksInstallCmd.parseAsync(['install'], { from: 'user' });
+              }
+            } catch {
+              // hook 설치 실패 시 무시 (init 결과에 영향 없음)
+            }
+          } else {
+            console.log(chalk.dim('\n  Tip: Run `aiwright hooks install` to auto-apply on PreCompact.'));
+          }
+        }
       } catch (err) {
         if (err instanceof Error) {
           console.error(chalk.red(`Error [E005]: ${err.message}`));

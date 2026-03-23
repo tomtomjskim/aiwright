@@ -9,6 +9,9 @@ import {
   registerScoreCommand,
   registerIntelligenceCommand,
   registerLintCommand,
+  registerStatusCommand,
+  registerImproveCommand,
+  registerHooksCommand,
 } from './commands/index.js';
 
 const program = new Command();
@@ -27,5 +30,8 @@ registerBenchCommand(program);
 registerScoreCommand(program);
 registerIntelligenceCommand(program);
 registerLintCommand(program);
+registerStatusCommand(program);
+registerImproveCommand(program);
+registerHooksCommand(program);
 
 program.parse();

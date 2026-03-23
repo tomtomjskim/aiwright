@@ -7,3 +7,6 @@ export { registerBenchCommand } from './bench.js';
 export { registerScoreCommand } from './score.js';
 export { registerIntelligenceCommand } from './intelligence.js';
 export { registerLintCommand } from './lint.js';
+export { registerStatusCommand } from './status.js';
+export { registerImproveCommand } from './improve.js';
+export { registerHooksCommand } from './hooks.js';
