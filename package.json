@@ -1,0 +1,70 @@
+{
+  "name": "@jsnetworkcorp/aiwright",
+  "version": "0.1.0",
+  "description": "Composable, measurable, shareable AI prompt library framework for TypeScript",
+  "type": "module",
+  "bin": {
+    "aiwright": "./dist/cli.mjs"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "ai",
+    "prompt",
+    "prompt-engineering",
+    "prompt-management",
+    "claude-code",
+    "cursor",
+    "copilot",
+    "llm",
+    "typescript",
+    "cli"
+  ],
+  "author": "JSNetworkCorp",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tomtomjskim/aiwright.git"
+  },
+  "homepage": "https://github.com/tomtomjskim/aiwright#readme",
+  "bugs": {
+    "url": "https://github.com/tomtomjskim/aiwright/issues"
+  },
+  "dependencies": {
+    "chalk": "^5.4.1",
+    "commander": "^13.1.0",
+    "gray-matter": "^4.0.3",
+    "js-yaml": "^4.1.0",
+    "mustache": "^4.2.0",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/mustache": "^4.2.5",
+    "@types/node": "^22.15.0",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.1"
+  }
+}
