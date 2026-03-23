@@ -1,8 +1,10 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
+import { randomUUID } from 'node:crypto';
 import { recordScore } from '../scoring/user-signal.js';
 import { readHistory, getOverallTrend } from '../scoring/history.js';
 import { AiwrightError } from '../utils/errors.js';
+import { recordUsageEvent } from '../intelligence/storage.js';
 
 function renderAsciiChart(values: number[]): string {
   if (values.length === 0) return '  (no data)';
@@ -65,6 +67,34 @@ export function registerScoreCommand(program: Command): void {
           if (opts.note) {
             console.log(chalk.dim(`  note: ${opts.note}`));
           }
+
+          // Record usage event (비침습적, 실패해도 무시)
+          try {
+            await recordUsageEvent({
+              event_id: randomUUID(),
+              event_type: 'score',
+              timestamp: result.timestamp,
+              recipe: name,
+              fragments: [],
+              adapter: result.adapter ?? 'generic',
+              domain_tags: [],
+              prompt_metrics: {
+                total_chars: 0,
+                slot_count: 0,
+                has_constraint: false,
+                has_example: false,
+                has_context: false,
+                variable_count: 0,
+                variable_filled: 0,
+                sentence_count: 0,
+                imperative_ratio: 0,
+              },
+              outcome: { score: value },
+            });
+          } catch {
+            // 이벤트 기록 실패는 score 결과에 영향을 주지 않음
+          }
+
           return;
         }
 

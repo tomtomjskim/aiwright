@@ -17,8 +17,11 @@ import {
   AiwrightError,
   ValidationError,
 } from '../utils/errors.js';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
+import { extractPromptMetrics } from '../intelligence/extract-metrics.js';
+import { lintComposed } from '../intelligence/linter.js';
+import { recordUsageEvent } from '../intelligence/storage.js';
 
 export function registerApplyCommand(program: Command): void {
   program
@@ -92,6 +95,17 @@ export function registerApplyCommand(program: Command): void {
         // 6. Render (apply vars)
         const rendered = render(composed, recipe.vars ?? {}, config.vars ?? {});
 
+        // 6a. Extract prompt metrics + lint (정적 분석)
+        const promptMetrics = extractPromptMetrics(rendered.fullText, rendered.sections);
+        const lintResults = lintComposed(rendered.fullText, rendered.sections, promptMetrics);
+        const highWarnLints = lintResults.filter((r) => r.severity === 'HIGH' || r.severity === 'WARN');
+        if (highWarnLints.length > 0) {
+          for (const lint of highWarnLints) {
+            const color = lint.severity === 'HIGH' ? chalk.red : chalk.yellow;
+            console.warn(color(`  [${lint.id}] ${lint.name}: ${lint.message}`));
+          }
+        }
+
         // --dry-run: print and exit
         if (opts.dryRun) {
           console.log(chalk.bold.cyan('--- Dry Run: Composed Prompt ---'));
@@ -142,6 +156,22 @@ export function registerApplyCommand(program: Command): void {
           for (const action of result.postActions) {
             console.log(chalk.yellow(`  Action: ${action}`));
           }
+        }
+
+        // 7a. Record usage event (비침습적, 실패해도 무시)
+        try {
+          await recordUsageEvent({
+            event_id: randomUUID(),
+            event_type: 'apply',
+            timestamp: new Date().toISOString(),
+            recipe: recipeName,
+            fragments: rendered.fragments,
+            adapter: adapter.name,
+            domain_tags: [],
+            prompt_metrics: promptMetrics,
+          });
+        } catch {
+          // 이벤트 기록 실패는 apply 결과에 영향을 주지 않음
         }
 
         // 8. Update manifest

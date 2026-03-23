@@ -5,3 +5,5 @@ export { registerApplyCommand } from './apply.js';
 export { registerListCommand } from './list.js';
 export { registerBenchCommand } from './bench.js';
 export { registerScoreCommand } from './score.js';
+export { registerIntelligenceCommand } from './intelligence.js';
+export { registerLintCommand } from './lint.js';
