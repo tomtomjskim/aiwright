@@ -1,6 +1,6 @@
 ---
 name: output-json
-version: "0.1.0"
+version: "0.2.0"
 description: Format output as structured JSON
 slot: output
 priority: 50
@@ -12,7 +12,8 @@ conflicts_with:
   - output-markdown
 ---
 
-When asked for structured data, respond with valid JSON.
-Use consistent key naming (camelCase).
-Include a top-level "status" field ("success" or "error").
-For errors, include a "message" field with a human-readable description.
+Always respond with valid JSON when asked for structured data.
+Use consistent camelCase key naming throughout.
+Always include a top-level "status" field ("success" or "error").
+Always include a "message" field with a human-readable description for errors.
+Never wrap JSON in markdown code blocks unless explicitly requested.

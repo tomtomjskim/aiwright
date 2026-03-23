@@ -1,0 +1,80 @@
+cases:
+  - name: "T1: Refactoring"
+    input: "Refactor this function for readability"
+    assertions:
+      - type: contains
+        value: "function"
+      - type: format
+        value: markdown
+      - type: length_gt
+        value: 100
+
+  - name: "T2: Security Review"
+    input: "Find security vulnerabilities in this code"
+    assertions:
+      - type: contains
+        value: "security"
+      - type: format
+        value: markdown
+
+  - name: "T3: Test Writing"
+    input: "Write unit tests for this module"
+    assertions:
+      - type: contains
+        value: "test"
+      - type: contains
+        value: "expect"
+
+  - name: "T4: Debugging"
+    input: "Debug this error: TypeError Cannot read property of undefined"
+    assertions:
+      - type: contains
+        value: "undefined"
+      - type: format
+        value: markdown
+
+  - name: "T5: API Endpoint"
+    input: "Add a REST API endpoint for user profiles"
+    assertions:
+      - type: contains
+        value: "endpoint"
+      - type: length_gt
+        value: 50
+
+  - name: "T6: Code Explanation"
+    input: "Explain how this sorting algorithm works"
+    assertions:
+      - type: format
+        value: markdown
+      - type: length_gt
+        value: 200
+
+  - name: "T7: PR Review"
+    input: "Review this pull request with 20 changed lines"
+    assertions:
+      - type: format
+        value: markdown
+
+  - name: "T8: Query Optimization"
+    input: "Optimize this SQL query that has N+1 problem"
+    assertions:
+      - type: contains
+        value: "query"
+
+  - name: "T9: Documentation"
+    input: "Write a README for this new project"
+    assertions:
+      - type: contains
+        value: "#"
+      - type: format
+        value: markdown
+      - type: length_gt
+        value: 100
+
+  - name: "T10: Type Improvement"
+    input: "Improve TypeScript types - replace any with proper types"
+    assertions:
+      - type: contains
+        value: "type"
+      - type: format
+        value: markdown

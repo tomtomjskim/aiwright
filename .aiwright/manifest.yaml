@@ -26,3 +26,16 @@ history:
       - output-markdown
     output_hash: 0164c74b81d0dfb5
     output_path: /home/ubuntu/aiwright/.claude/CLAUDE.md
+  - recipe: default
+    adapter: claude-code
+    applied_at: '2026-03-23T08:07:18.613Z'
+    fragments_applied:
+      - system-role-engineer
+      - open-source-conventions
+      - test-driven
+      - typescript-strict
+      - constraint-no-hallucination
+      - constraint-concise
+      - output-markdown
+    output_hash: 0164c74b81d0dfb5
+    output_path: /home/ubuntu/aiwright/.claude/CLAUDE.md

@@ -1,6 +1,6 @@
 ---
 name: output-markdown
-version: "0.1.0"
+version: "0.2.0"
 description: Format output as Markdown
 slot: output
 priority: 50
@@ -11,9 +11,9 @@ conflicts_with:
   - output-json
 ---
 
-Format your responses using Markdown:
-- Use headers (##) for sections
-- Use code blocks with language tags for code
-- Use bullet points for lists
-- Use bold for emphasis on key terms
-- Use tables when comparing multiple items
+Always format responses using Markdown.
+Use headers (##) to organize sections clearly.
+Use code blocks with language tags for all code snippets.
+Use bullet points for lists and bold for key terms.
+Use tables when comparing multiple items.
+Never output raw unformatted text for technical content.
