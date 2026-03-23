@@ -1,14 +1,26 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { AdapterContract, ApplyResult, ComposedPrompt, DetectResult } from './contract.js';
-import { fileExists } from '../utils/fs.js';
+import { fileExists, ensureDir } from '../utils/fs.js';
 
-const MARKER_START = '<!-- aiwright:start -->';
-const MARKER_END = '<!-- aiwright:end -->';
+/**
+ * Claude Code 어댑터 — 분리 참조 구조
+ *
+ * 기존: CLAUDE.md에 마커로 직접 주입 (덮어쓰기 위험)
+ * 변경: .claude/CLAUDE.md를 aiwright가 소유 (루트 CLAUDE.md 건드리지 않음)
+ *
+ * Claude Code는 루트 CLAUDE.md + .claude/CLAUDE.md 둘 다 읽으므로:
+ * - 루트 CLAUDE.md = 사람이 관리 (프로젝트 규칙, 컨벤션)
+ * - .claude/CLAUDE.md = aiwright 소유 (AI 프롬프트 설정)
+ */
+
+const HEADER = `# AI Prompt Configuration (managed by aiwright)
+# Do not edit manually — run \`aiwright apply\` to regenerate
+`;
 
 export class ClaudeCodeAdapter implements AdapterContract {
   readonly name = 'claude-code';
-  readonly description = 'Claude Code (CLAUDE.md + .claude/)';
+  readonly description = 'Claude Code (.claude/CLAUDE.md — separate from root CLAUDE.md)';
 
   async detect(projectDir: string): Promise<DetectResult> {
     const claudeDir = path.join(projectDir, '.claude');
@@ -18,141 +30,71 @@ export class ClaudeCodeAdapter implements AdapterContract {
     const hasClaudeMd = await fileExists(claudeMd);
 
     if (hasClaudeDir) {
-      return {
-        detected: true,
-        confidence: 0.95,
-        reason: '.claude/ directory found',
-      };
+      return { detected: true, confidence: 0.95, reason: '.claude/ directory found' };
     }
-
     if (hasClaudeMd) {
-      return {
-        detected: true,
-        confidence: 0.7,
-        reason: 'CLAUDE.md found (no .claude/ directory)',
-      };
+      return { detected: true, confidence: 0.7, reason: 'CLAUDE.md found (no .claude/ directory)' };
     }
-
-    return {
-      detected: false,
-      confidence: 0,
-      reason: 'Neither .claude/ nor CLAUDE.md found',
-    };
+    return { detected: false, confidence: 0, reason: 'Neither .claude/ nor CLAUDE.md found' };
   }
 
+  /**
+   * .claude/CLAUDE.md에 합성된 프롬프트를 작성한다.
+   * 루트 CLAUDE.md는 건드리지 않는다.
+   */
   async apply(prompt: ComposedPrompt, projectDir: string): Promise<ApplyResult> {
-    const claudeMdPath = path.join(projectDir, 'CLAUDE.md');
-    const markerBlock = `${MARKER_START}\n${prompt.fullText}\n${MARKER_END}`;
+    const claudeDir = path.join(projectDir, '.claude');
+    await ensureDir(claudeDir);
 
-    let existingContent = '';
-    if (await fileExists(claudeMdPath)) {
-      existingContent = await fs.readFile(claudeMdPath, 'utf-8');
-    }
+    const outputPath = path.join(claudeDir, 'CLAUDE.md');
+    const content = `${HEADER}\n${prompt.fullText}\n`;
 
-    let newContent: string;
-
-    const startIdx = existingContent.indexOf(MARKER_START);
-    const endIdx = existingContent.indexOf(MARKER_END);
-
-    if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-      // 마커 사이 교체 (마커 포함), 마커 밖 내용 보존
-      const before = existingContent.slice(0, startIdx);
-      const after = existingContent.slice(endIdx + MARKER_END.length);
-      newContent = `${before}${markerBlock}${after}`;
-    } else {
-      // 마커 없으면 파일 끝에 추가
-      const separator = existingContent.length > 0 && !existingContent.endsWith('\n')
-        ? '\n\n'
-        : existingContent.length > 0
-          ? '\n'
-          : '';
-      newContent = `${existingContent}${separator}${markerBlock}\n`;
-    }
-
-    await fs.writeFile(claudeMdPath, newContent, 'utf-8');
+    await fs.writeFile(outputPath, content, 'utf-8');
 
     return {
       success: true,
-      outputPaths: [claudeMdPath],
-      message: `Applied to CLAUDE.md via aiwright markers`,
+      outputPaths: [outputPath],
+      message: `Applied to .claude/CLAUDE.md (root CLAUDE.md untouched)`,
     };
   }
 
+  /**
+   * .claude/CLAUDE.md에서 현재 적용된 프롬프트를 읽는다.
+   */
   async read(projectDir: string): Promise<ComposedPrompt | null> {
-    const claudeMdPath = path.join(projectDir, 'CLAUDE.md');
+    const outputPath = path.join(projectDir, '.claude', 'CLAUDE.md');
 
-    if (!(await fileExists(claudeMdPath))) {
-      return null;
-    }
+    if (!(await fileExists(outputPath))) return null;
 
-    const content = await fs.readFile(claudeMdPath, 'utf-8');
-    const startIdx = content.indexOf(MARKER_START);
-    const endIdx = content.indexOf(MARKER_END);
-
-    if (startIdx === -1 || endIdx === -1 || endIdx <= startIdx) {
-      return null;
-    }
-
-    const innerText = content
-      .slice(startIdx + MARKER_START.length, endIdx)
-      .replace(/^\n/, '')
-      .replace(/\n$/, '');
-
-    const sections = new Map<string, string>();
-    sections.set('full', innerText);
+    const content = await fs.readFile(outputPath, 'utf-8');
+    // HEADER 이후의 내용만 추출
+    const headerEnd = content.indexOf('\n\n');
+    const promptText = headerEnd !== -1 ? content.slice(headerEnd + 2).trim() : content.trim();
 
     return {
-      sections,
-      fullText: innerText,
+      sections: new Map([['full', promptText]]),
+      fullText: promptText,
       fragments: [],
       resolvedVars: {},
     };
   }
 
+  /**
+   * .claude/CLAUDE.md를 삭제한다. 루트 CLAUDE.md는 건드리지 않는다.
+   */
   async remove(projectDir: string): Promise<ApplyResult> {
-    const claudeMdPath = path.join(projectDir, 'CLAUDE.md');
+    const outputPath = path.join(projectDir, '.claude', 'CLAUDE.md');
 
-    if (!(await fileExists(claudeMdPath))) {
-      return {
-        success: true,
-        outputPaths: [],
-        message: 'CLAUDE.md not found; nothing to remove',
-      };
+    if (!(await fileExists(outputPath))) {
+      return { success: true, outputPaths: [], message: 'No .claude/CLAUDE.md found' };
     }
 
-    const content = await fs.readFile(claudeMdPath, 'utf-8');
-    const startIdx = content.indexOf(MARKER_START);
-    const endIdx = content.indexOf(MARKER_END);
-
-    if (startIdx === -1 || endIdx === -1 || endIdx <= startIdx) {
-      return {
-        success: true,
-        outputPaths: [],
-        message: 'No aiwright markers found in CLAUDE.md; nothing to remove',
-      };
-    }
-
-    // 마커 섹션 제거 (앞뒤 개행 정리)
-    const before = content.slice(0, startIdx).replace(/\n+$/, '');
-    const after = content.slice(endIdx + MARKER_END.length).replace(/^\n+/, '');
-
-    let newContent: string;
-    if (before.length > 0 && after.length > 0) {
-      newContent = `${before}\n\n${after}`;
-    } else if (before.length > 0) {
-      newContent = `${before}\n`;
-    } else if (after.length > 0) {
-      newContent = after;
-    } else {
-      newContent = '';
-    }
-
-    await fs.writeFile(claudeMdPath, newContent, 'utf-8');
+    await fs.unlink(outputPath);
 
     return {
       success: true,
-      outputPaths: [claudeMdPath],
-      message: 'Removed aiwright section from CLAUDE.md',
+      outputPaths: [outputPath],
+      message: 'Removed .claude/CLAUDE.md (root CLAUDE.md untouched)',
     };
   }
 }

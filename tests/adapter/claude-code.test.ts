@@ -12,18 +12,10 @@ async function makeTmpDir(): Promise<string> {
 function makePrompt(fullText: string): ComposedPrompt {
   const sections = new Map<string, string>();
   sections.set('full', fullText);
-  return {
-    sections,
-    fullText,
-    fragments: ['test-frag'],
-    resolvedVars: {},
-  };
+  return { sections, fullText, fragments: ['test-frag'], resolvedVars: {} };
 }
 
-const MARKER_START = '<!-- aiwright:start -->';
-const MARKER_END = '<!-- aiwright:end -->';
-
-describe('ClaudeCodeAdapter', () => {
+describe('ClaudeCodeAdapter (separate .claude/CLAUDE.md)', () => {
   let adapter: ClaudeCodeAdapter;
   let tmpDir: string;
 
@@ -37,158 +29,122 @@ describe('ClaudeCodeAdapter', () => {
   });
 
   describe('detect', () => {
-    it('detects with high confidence when .claude/ directory exists', async () => {
+    it('detects with high confidence when .claude/ exists', async () => {
       await fs.mkdir(path.join(tmpDir, '.claude'), { recursive: true });
       const result = await adapter.detect(tmpDir);
       expect(result.detected).toBe(true);
       expect(result.confidence).toBeGreaterThanOrEqual(0.9);
     });
 
-    it('detects with lower confidence when only CLAUDE.md exists (no .claude/)', async () => {
-      await fs.writeFile(path.join(tmpDir, 'CLAUDE.md'), '# Project Claude Config');
+    it('detects with lower confidence when only root CLAUDE.md exists', async () => {
+      await fs.writeFile(path.join(tmpDir, 'CLAUDE.md'), '# Project');
       const result = await adapter.detect(tmpDir);
       expect(result.detected).toBe(true);
       expect(result.confidence).toBeLessThan(0.9);
     });
 
-    it('returns detected=false when neither .claude/ nor CLAUDE.md exist', async () => {
+    it('returns detected=false when neither exists', async () => {
       const result = await adapter.detect(tmpDir);
       expect(result.detected).toBe(false);
-      expect(result.confidence).toBe(0);
-    });
-
-    it('provides a reason string in all cases', async () => {
-      const result = await adapter.detect(tmpDir);
-      expect(typeof result.reason).toBe('string');
-      expect(result.reason.length).toBeGreaterThan(0);
     });
   });
 
   describe('apply', () => {
-    it('creates a new CLAUDE.md with aiwright markers when file does not exist', async () => {
+    it('creates .claude/CLAUDE.md without touching root CLAUDE.md', async () => {
+      // Root CLAUDE.md exists with project content
+      const rootPath = path.join(tmpDir, 'CLAUDE.md');
+      await fs.writeFile(rootPath, '# My Project Rules\nDo not touch this.');
+
       const prompt = makePrompt('You are a helpful assistant.');
       const result = await adapter.apply(prompt, tmpDir);
 
       expect(result.success).toBe(true);
-      const content = await fs.readFile(path.join(tmpDir, 'CLAUDE.md'), 'utf-8');
-      expect(content).toContain(MARKER_START);
-      expect(content).toContain(MARKER_END);
-      expect(content).toContain('You are a helpful assistant.');
+
+      // Root CLAUDE.md untouched
+      const rootContent = await fs.readFile(rootPath, 'utf-8');
+      expect(rootContent).toBe('# My Project Rules\nDo not touch this.');
+
+      // .claude/CLAUDE.md created
+      const aiwrightPath = path.join(tmpDir, '.claude', 'CLAUDE.md');
+      const aiwrightContent = await fs.readFile(aiwrightPath, 'utf-8');
+      expect(aiwrightContent).toContain('You are a helpful assistant.');
+      expect(aiwrightContent).toContain('managed by aiwright');
     });
 
-    it('appends to existing CLAUDE.md that has no markers', async () => {
-      const claudeMdPath = path.join(tmpDir, 'CLAUDE.md');
-      await fs.writeFile(claudeMdPath, '# Existing content\n\nSome project notes.');
-
-      const prompt = makePrompt('New prompt content.');
+    it('creates .claude/ directory if it does not exist', async () => {
+      const prompt = makePrompt('Test prompt.');
       await adapter.apply(prompt, tmpDir);
 
-      const content = await fs.readFile(claudeMdPath, 'utf-8');
-      expect(content).toContain('# Existing content');
-      expect(content).toContain(MARKER_START);
-      expect(content).toContain('New prompt content.');
+      const exists = await fs.stat(path.join(tmpDir, '.claude')).then(() => true).catch(() => false);
+      expect(exists).toBe(true);
     });
 
-    it('replaces existing aiwright marker section without losing surrounding content', async () => {
-      const claudeMdPath = path.join(tmpDir, 'CLAUDE.md');
-      const existing = `# Header\n\n${MARKER_START}\nOld content.\n${MARKER_END}\n\n## Footer`;
-      await fs.writeFile(claudeMdPath, existing);
+    it('overwrites previous .claude/CLAUDE.md on re-apply', async () => {
+      await adapter.apply(makePrompt('First version.'), tmpDir);
+      await adapter.apply(makePrompt('Second version.'), tmpDir);
 
-      const prompt = makePrompt('Updated content.');
-      await adapter.apply(prompt, tmpDir);
-
-      const content = await fs.readFile(claudeMdPath, 'utf-8');
-      expect(content).toContain('# Header');
-      expect(content).toContain('## Footer');
-      expect(content).toContain('Updated content.');
-      expect(content).not.toContain('Old content.');
+      const content = await fs.readFile(path.join(tmpDir, '.claude', 'CLAUDE.md'), 'utf-8');
+      expect(content).toContain('Second version.');
+      expect(content).not.toContain('First version.');
     });
 
-    it('returns the CLAUDE.md path in outputPaths', async () => {
-      const prompt = makePrompt('Some prompt.');
-      const result = await adapter.apply(prompt, tmpDir);
-      expect(result.outputPaths).toContain(path.join(tmpDir, 'CLAUDE.md'));
+    it('returns .claude/CLAUDE.md in outputPaths', async () => {
+      const result = await adapter.apply(makePrompt('Test.'), tmpDir);
+      expect(result.outputPaths[0]).toBe(path.join(tmpDir, '.claude', 'CLAUDE.md'));
+    });
+
+    it('includes header comment in output', async () => {
+      await adapter.apply(makePrompt('Content.'), tmpDir);
+      const content = await fs.readFile(path.join(tmpDir, '.claude', 'CLAUDE.md'), 'utf-8');
+      expect(content).toContain('Do not edit manually');
+      expect(content).toContain('aiwright apply');
     });
   });
 
   describe('read', () => {
-    it('returns null when CLAUDE.md does not exist', async () => {
+    it('returns null when .claude/CLAUDE.md does not exist', async () => {
       const result = await adapter.read(tmpDir);
       expect(result).toBeNull();
     });
 
-    it('returns null when CLAUDE.md has no aiwright markers', async () => {
-      await fs.writeFile(path.join(tmpDir, 'CLAUDE.md'), '# No markers here');
-      const result = await adapter.read(tmpDir);
-      expect(result).toBeNull();
-    });
-
-    it('extracts content between aiwright markers', async () => {
-      const innerContent = 'This is the aiwright-managed prompt.';
-      await fs.writeFile(
-        path.join(tmpDir, 'CLAUDE.md'),
-        `# Header\n\n${MARKER_START}\n${innerContent}\n${MARKER_END}\n\n## Footer`
-      );
-
+    it('reads prompt content from .claude/CLAUDE.md', async () => {
+      await adapter.apply(makePrompt('Read this back.'), tmpDir);
       const result = await adapter.read(tmpDir);
       expect(result).not.toBeNull();
-      expect(result!.fullText).toBe(innerContent);
+      expect(result!.fullText).toContain('Read this back.');
     });
 
-    it('returns a ComposedPrompt with sections map containing "full" key', async () => {
-      const innerContent = 'Managed content here.';
-      await fs.writeFile(
-        path.join(tmpDir, 'CLAUDE.md'),
-        `${MARKER_START}\n${innerContent}\n${MARKER_END}`
-      );
-
+    it('strips header from read result', async () => {
+      await adapter.apply(makePrompt('Actual content.'), tmpDir);
       const result = await adapter.read(tmpDir);
-      expect(result!.sections.has('full')).toBe(true);
+      expect(result!.fullText).not.toContain('managed by aiwright');
+      expect(result!.fullText).toContain('Actual content.');
     });
   });
 
   describe('remove', () => {
-    it('returns success when CLAUDE.md does not exist', async () => {
+    it('returns success when .claude/CLAUDE.md does not exist', async () => {
       const result = await adapter.remove(tmpDir);
       expect(result.success).toBe(true);
     });
 
-    it('returns success without modification when no markers exist', async () => {
-      await fs.writeFile(path.join(tmpDir, 'CLAUDE.md'), '# No markers');
-      const result = await adapter.remove(tmpDir);
-      expect(result.success).toBe(true);
-      const content = await fs.readFile(path.join(tmpDir, 'CLAUDE.md'), 'utf-8');
-      expect(content).toBe('# No markers');
-    });
-
-    it('removes aiwright marker section from CLAUDE.md', async () => {
-      const claudeMdPath = path.join(tmpDir, 'CLAUDE.md');
-      await fs.writeFile(
-        claudeMdPath,
-        `# Header\n\n${MARKER_START}\nManaged prompt content.\n${MARKER_END}\n\n## Footer`
-      );
-
+    it('deletes .claude/CLAUDE.md', async () => {
+      await adapter.apply(makePrompt('To be removed.'), tmpDir);
       const result = await adapter.remove(tmpDir);
       expect(result.success).toBe(true);
 
-      const content = await fs.readFile(claudeMdPath, 'utf-8');
-      expect(content).toContain('# Header');
-      expect(content).toContain('## Footer');
-      expect(content).not.toContain(MARKER_START);
-      expect(content).not.toContain(MARKER_END);
-      expect(content).not.toContain('Managed prompt content.');
+      const exists = await fs.stat(path.join(tmpDir, '.claude', 'CLAUDE.md')).then(() => true).catch(() => false);
+      expect(exists).toBe(false);
     });
 
-    it('produces empty file when markers are the only content', async () => {
-      const claudeMdPath = path.join(tmpDir, 'CLAUDE.md');
-      await fs.writeFile(
-        claudeMdPath,
-        `${MARKER_START}\nOnly content.\n${MARKER_END}\n`
-      );
-
+    it('does not touch root CLAUDE.md', async () => {
+      const rootPath = path.join(tmpDir, 'CLAUDE.md');
+      await fs.writeFile(rootPath, '# Keep me');
+      await adapter.apply(makePrompt('Managed.'), tmpDir);
       await adapter.remove(tmpDir);
-      const content = await fs.readFile(claudeMdPath, 'utf-8');
-      expect(content.trim()).toBe('');
+
+      const rootContent = await fs.readFile(rootPath, 'utf-8');
+      expect(rootContent).toBe('# Keep me');
     });
   });
 });
