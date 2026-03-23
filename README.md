@@ -498,8 +498,8 @@ graph LR
 - [x] **Phase 1**: Prompt Library — Fragment/Recipe, CLI, Claude Code Adapter, Scoring
 - [x] **Phase 2a**: Profile Engine — 6-axis Style, Prompt DNA, Linter (8 rules), Weakness Diagnosis
 - [x] **Phase 2b**: Behavior Analysis — PCR/FTRR metrics, Adaptive AI, Linter (4 rules)
-- [ ] **Phase 2c**: Visualization & Team — Skill Tree, Prompt Kata, Team Dashboard, Git AI-Trace
-- [ ] **Phase 3**: Drift Detection — TextGrad directional feedback, Auto-deactivation
+- [x] **Phase 2c**: Visualization & Team — Skill Tree, Prompt Kata, Team Dashboard, Git AI-Trace
+- [x] **Phase 3**: Drift Detection — Drift Detection (3-level), LLM-as-Judge (simulation), Self-tuning
 - [ ] **Phase 4**: Multi-Adapter — Cursor, Copilot, Windsurf
 - [ ] **Phase 5**: Advanced — Bayesian Optimization, Dual Evolution
 

@@ -5,6 +5,8 @@ import { rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { loadEvents, loadProfile, saveProfile } from '../intelligence/storage.js';
+import { detectDrift } from '../intelligence/drift.js';
+import { judgePrompt } from '../intelligence/llm-judge.js';
 import { computeStyle, generateDnaCode, aggregateDomains } from '../intelligence/profiler.js';
 import { diagnoseWeaknesses } from '../intelligence/diagnose.js';
 import { computeBehavior } from '../intelligence/behavior.js';
@@ -273,14 +275,152 @@ async function runReset(force: boolean): Promise<void> {
   console.log(chalk.green('✔') + ' Intelligence data reset.');
 }
 
+// ---- drift ----
+
+async function runDrift(recipe: string): Promise<void> {
+  const events = await loadEvents();
+
+  console.log(chalk.bold(`Drift Detection: ${recipe}`));
+  console.log(chalk.dim('═'.repeat(39)));
+
+  if (events.length === 0) {
+    console.log(chalk.yellow('  No events recorded yet.'));
+    console.log(chalk.dim('  Use `aiwright apply` and `aiwright score` to collect data.'));
+    return;
+  }
+
+  const report = detectDrift(events, recipe);
+
+  const levelIcon: Record<string, string> = {
+    none: chalk.green('✓ OK'),
+    warning: chalk.yellow('⚠ WARNING'),
+    adjustment: chalk.red('✖ ADJUSTMENT NEEDED'),
+    deactivation: chalk.red('✖✖ DEACTIVATION SUGGESTED'),
+  };
+
+  const trendIcon: Record<string, string> = {
+    improving: chalk.green('↗'),
+    stable: chalk.dim('→'),
+    declining: chalk.red('↘'),
+  };
+
+  console.log(`Status: ${levelIcon[report.level] ?? report.level}`);
+
+  if (report.level !== 'none') {
+    console.log(`  ${report.message}`);
+    console.log(`  Recent avg: ${report.avg_recent.toFixed(2)}  Previous avg: ${report.avg_previous.toFixed(2)}`);
+    console.log(`  Trend: ${report.trend} ${trendIcon[report.trend] ?? ''}`);
+  } else {
+    if (report.avg_recent > 0) {
+      console.log(`  Recent avg: ${report.avg_recent.toFixed(2)}  Trend: ${report.trend} ${trendIcon[report.trend] ?? ''}`);
+    } else {
+      console.log(chalk.dim('  Not enough scored events to calculate drift.'));
+    }
+  }
+
+  if (report.suggestion) {
+    console.log('');
+    console.log(chalk.bold('Suggestion:'));
+    for (const line of report.suggestion.split('\n')) {
+      console.log(`  ${line}`);
+    }
+  }
+}
+
+// ---- judge ----
+
+async function runJudge(recipe: string): Promise<void> {
+  const events = await loadEvents();
+
+  console.log(chalk.bold(`LLM-as-Judge: ${recipe}`));
+  console.log(chalk.dim('═'.repeat(39)));
+
+  // recipe에 해당하는 가장 최근 apply 이벤트에서 합성된 프롬프트 텍스트 구성
+  // 이벤트에는 프롬프트 원문이 저장되지 않으므로 메트릭 기반 시뮬레이션 텍스트 생성
+  const recipeEvents = events
+    .filter((e) => e.recipe === recipe && e.event_type === 'apply')
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+  let simulatedText: string;
+  if (recipeEvents.length > 0) {
+    const latest = recipeEvents[0];
+    simulatedText = buildSimulatedPrompt(latest.prompt_metrics);
+  } else {
+    // 이벤트가 없어도 최소 텍스트로 judge 실행
+    simulatedText = `[system]\nYou are an AI assistant.\n[instruction]\nComplete the task.`;
+  }
+
+  const result = await judgePrompt(simulatedText);
+
+  const scoreColor = result.score >= 0.8 ? chalk.green : result.score >= 0.6 ? chalk.yellow : chalk.red;
+  console.log(`Score: ${scoreColor(result.score.toFixed(2))}`);
+  console.log('');
+
+  if (result.strengths.length > 0) {
+    console.log(chalk.bold('Strengths:'));
+    for (const s of result.strengths) {
+      console.log(`  ${chalk.green('+')} ${s}`);
+    }
+    console.log('');
+  }
+
+  if (result.weaknesses.length > 0) {
+    console.log(chalk.bold('Weaknesses:'));
+    for (const w of result.weaknesses) {
+      console.log(`  ${chalk.red('-')} ${w}`);
+    }
+    console.log('');
+  }
+
+  console.log(chalk.bold('Feedback:'));
+  console.log(`  ${result.feedback}`);
+  console.log(chalk.dim(`\n  Model: ${result.model}`));
+}
+
+/**
+ * PromptMetrics 기반으로 시뮬레이션 프롬프트 텍스트 구성
+ * (실제 원문 저장 없음 — 메트릭으로 역산)
+ */
+function buildSimulatedPrompt(
+  metrics: import('../schema/usage-event.js').PromptMetrics,
+): string {
+  const parts: string[] = [];
+
+  parts.push('[system]\nYou are a helpful AI assistant.');
+
+  if (metrics.has_context) {
+    parts.push('[context]\nRelevant background information for this task.');
+  }
+
+  parts.push('[instruction]\nComplete the assigned task.');
+
+  if (metrics.has_constraint) {
+    parts.push('[constraint]\nNever output harmful content. Always follow the specified format.');
+  }
+
+  if (metrics.has_example) {
+    parts.push('[example]\nInput: example\nOutput: result');
+  }
+
+  // 변수 슬롯 추가
+  if (metrics.variable_count > 0) {
+    const unfilled = metrics.variable_count - metrics.variable_filled;
+    if (unfilled > 0) {
+      parts.push(`[context]\nTopic: {{topic}}`);
+    }
+  }
+
+  return parts.join('\n\n');
+}
+
 // ---- register ----
 
 export function registerIntelligenceCommand(program: Command): void {
   program
-    .command('intelligence <subcommand>')
-    .description('User intelligence: analyze, profile, skill-tree, kata, export, team-sync, team, reset')
+    .command('intelligence <subcommand> [target]')
+    .description('User intelligence: analyze, profile, skill-tree, kata, export, team-sync, team, reset, drift, judge')
     .option('--force', 'Skip confirmation (reset)')
-    .action(async (subcommand: string, opts: { force?: boolean }) => {
+    .action(async (subcommand: string, target: string | undefined, opts: { force?: boolean }) => {
       const projectDir = process.cwd();
       try {
         switch (subcommand) {
@@ -292,8 +432,10 @@ export function registerIntelligenceCommand(program: Command): void {
           case 'team-sync': await runTeamSync(projectDir); break;
           case 'team': await runTeam(projectDir); break;
           case 'reset': await runReset(opts.force ?? false); break;
+          case 'drift': await runDrift(target ?? 'default'); break;
+          case 'judge': await runJudge(target ?? 'default'); break;
           default:
-            console.error(chalk.red(`Unknown subcommand "${subcommand}". Available: analyze, profile, skill-tree, kata, export, team-sync, team, reset`));
+            console.error(chalk.red(`Unknown subcommand "${subcommand}". Available: analyze, profile, skill-tree, kata, export, team-sync, team, reset, drift, judge`));
             process.exit(1);
         }
       } catch (err) {

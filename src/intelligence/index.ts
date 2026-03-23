@@ -10,3 +10,6 @@ export * from './skill-tree.js';
 export * from './kata.js';
 export * from './team.js';
 export * from './git-trace.js';
+export * from './drift.js';
+export * from './llm-judge.js';
+export * from './self-tune.js';
