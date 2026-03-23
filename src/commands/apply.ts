@@ -21,7 +21,8 @@ import { createHash, randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import { extractPromptMetrics } from '../intelligence/extract-metrics.js';
 import { lintComposed } from '../intelligence/linter.js';
-import { recordUsageEvent } from '../intelligence/storage.js';
+import { recordUsageEvent, loadProfile } from '../intelligence/storage.js';
+import { adaptFragments } from '../intelligence/adapt.js';
 
 export function registerApplyCommand(program: Command): void {
   program
@@ -64,16 +65,30 @@ export function registerApplyCommand(program: Command): void {
           ...recipeEntry,
         };
 
-        // 3. Resolve + load each fragment
+        // 3. Adaptive fragment adjustment
+        const profile = await loadProfile().catch(() => null);
+        let effectiveEntries: Array<{fragment: string; enabled?: boolean; vars?: Record<string, unknown>}> = recipe.fragments;
+        if (profile?.adaptive?.enabled) {
+          const adapted = adaptFragments(recipe.fragments, profile);
+          effectiveEntries = adapted.entries;
+          if (adapted.actions.length > 0) {
+            console.log(chalk.dim('  [adaptive]'));
+            for (const a of adapted.actions) {
+              console.log(chalk.dim(`    ${a.type === 'inject' ? '+' : '-'} ${a.fragment}: ${a.reason}`));
+            }
+          }
+        }
+
+        // 4. Resolve + load each fragment (effectiveEntries 기반)
         const resolveOpts = { projectDir };
         const fragmentFiles = await Promise.all(
-          recipe.fragments.map(async (entry) => {
+          effectiveEntries.map(async (entry) => {
             const resolved = await resolveFragment(entry.fragment, resolveOpts);
             return loadFragment(resolved.path);
           })
         );
 
-        // 4. Validate
+        // 5. Validate
         const validationResult = validateRecipe(recipe, fragmentFiles);
 
         if (validationResult.warnings.length > 0) {
@@ -84,15 +99,15 @@ export function registerApplyCommand(program: Command): void {
 
         assertValid(validationResult);
 
-        // 5. Compose
+        // 6. Compose
         const enabledNames = new Set(
-          recipe.fragments
+          effectiveEntries
             .filter((e) => e.enabled !== false)
             .map((e) => e.fragment)
         );
         const composed = compose(fragmentFiles, enabledNames);
 
-        // 6. Render (apply vars)
+        // 7. Render (apply vars)
         const rendered = render(composed, recipe.vars ?? {}, config.vars ?? {});
 
         // 6a. Extract prompt metrics + lint (정적 분석)

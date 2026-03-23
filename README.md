@@ -496,8 +496,8 @@ graph LR
 ## Roadmap
 
 - [x] **Phase 1**: Prompt Library — Fragment/Recipe, CLI, Claude Code Adapter, Scoring
-- [ ] **Phase 2a**: Profile Engine — 6-axis Style, Prompt DNA, Linter (8 rules), Weakness Diagnosis
-- [ ] **Phase 2b**: Behavior Analysis — PCR/FTRR metrics, Adaptive AI, Linter (4 rules), LLM-as-Judge
+- [x] **Phase 2a**: Profile Engine — 6-axis Style, Prompt DNA, Linter (8 rules), Weakness Diagnosis
+- [x] **Phase 2b**: Behavior Analysis — PCR/FTRR metrics, Adaptive AI, Linter (4 rules)
 - [ ] **Phase 2c**: Visualization & Team — Skill Tree, Prompt Kata, Team Dashboard, Git AI-Trace
 - [ ] **Phase 3**: Drift Detection — TextGrad directional feedback, Auto-deactivation
 - [ ] **Phase 4**: Multi-Adapter — Cursor, Copilot, Windsurf

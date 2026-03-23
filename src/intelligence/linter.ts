@@ -1,4 +1,4 @@
-import { type PromptMetrics } from '../schema/usage-event.js';
+import { type PromptMetrics, type UsageEvent } from '../schema/usage-event.js';
 
 export interface LintResult {
   id: string;
@@ -109,6 +109,88 @@ export function lintComposed(
         message: `context 섹션이 전체의 ${(contextRatio * 100).toFixed(0)}%를 차지합니다. 핵심 맥락만 남기고 토큰을 절약하세요.`,
       });
     }
+  }
+
+  // PS009: Contradicting Constraints — "always X"와 "never X" 동일 대상 감지
+  const constraintText = sections.get('constraint') ?? '';
+  if (constraintText.length > 0) {
+    const alwaysMatches = [...constraintText.matchAll(/always\s+(\w+)/gi)].map((m) =>
+      m[1].toLowerCase(),
+    );
+    const neverMatches = [...constraintText.matchAll(/never\s+(\w+)/gi)].map((m) =>
+      m[1].toLowerCase(),
+    );
+    const alwaysSet = new Set(alwaysMatches);
+    const conflicting = neverMatches.filter((w) => alwaysSet.has(w));
+    if (conflicting.length > 0) {
+      results.push({
+        id: 'PS009',
+        name: 'Contradicting Constraints',
+        severity: 'HIGH',
+        message: `constraint에 모순 지시가 있습니다: "${conflicting[0]}"에 대해 always/never가 동시에 존재합니다.`,
+      });
+    }
+  }
+
+  // PS010: Duplicate Lines — 같은 문장이 2회 이상 등장 (줄 단위 중복)
+  const lines = fullText
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+  const lineCounts = new Map<string, number>();
+  for (const line of lines) {
+    lineCounts.set(line, (lineCounts.get(line) ?? 0) + 1);
+  }
+  const duplicates = [...lineCounts.entries()].filter(([, count]) => count >= 2);
+  if (duplicates.length > 0) {
+    results.push({
+      id: 'PS010',
+      name: 'Duplicate Lines',
+      severity: 'WARN',
+      message: `중복 문장이 ${duplicates.length}개 발견되었습니다. 동일 내용이 반복되면 토큰을 낭비합니다.`,
+    });
+  }
+
+  return results;
+}
+
+/**
+ * 히스토리 기반 Linter — 이벤트 목록과 레시피명으로 패턴 분석
+ *
+ * PS011: 최근 5회 동일 recipe score < 0.5 연속
+ * PS012: apply 10회+ but score 0회
+ */
+export function lintBehavior(events: UsageEvent[], recipeName: string): LintResult[] {
+  const results: LintResult[] = [];
+
+  // 해당 레시피 이벤트만 필터
+  const recipeEvents = events.filter((e) => e.recipe === recipeName);
+
+  // PS011: 최근 5회 동일 recipe score < 0.5 연속
+  const scoreEvents = recipeEvents.filter((e) => e.outcome?.score !== undefined);
+  if (scoreEvents.length >= 5) {
+    const recent5 = scoreEvents.slice(-5);
+    const allLow = recent5.every((e) => (e.outcome?.score ?? 1) < 0.5);
+    if (allLow) {
+      results.push({
+        id: 'PS011',
+        name: 'Persistent Low Score',
+        severity: 'WARN',
+        message: `레시피 "${recipeName}"의 최근 5회 점수가 모두 0.5 미만입니다. 프래그먼트 구성을 재검토하세요.`,
+      });
+    }
+  }
+
+  // PS012: apply 10회+ but score 0회
+  const applyCount = recipeEvents.filter((e) => e.event_type === 'apply').length;
+  const scoredCount = recipeEvents.filter((e) => e.outcome?.score !== undefined).length;
+  if (applyCount >= 10 && scoredCount === 0) {
+    results.push({
+      id: 'PS012',
+      name: 'No Score Recorded',
+      severity: 'INFO',
+      message: `레시피 "${recipeName}"을 ${applyCount}회 적용했지만 점수 기록이 없습니다. \`aiwright score\`로 결과를 측정하세요.`,
+    });
   }
 
   return results;

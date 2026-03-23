@@ -7,7 +7,9 @@ import path from 'node:path';
 import { loadEvents, loadProfile, saveProfile } from '../intelligence/storage.js';
 import { computeStyle, generateDnaCode, aggregateDomains } from '../intelligence/profiler.js';
 import { diagnoseWeaknesses } from '../intelligence/diagnose.js';
-import type { PromptStyle, Weakness, DomainStats } from '../schema/user-profile.js';
+import { computeBehavior } from '../intelligence/behavior.js';
+import { computeGrowth } from '../intelligence/growth.js';
+import type { PromptStyle, Weakness, DomainStats, BehaviorProfile, GrowthSnapshot } from '../schema/user-profile.js';
 
 // ---- 유틸 ----
 
@@ -59,6 +61,23 @@ function printWeaknesses(weaknesses: Weakness[]): void {
   }
 }
 
+function printBehavior(behavior: BehaviorProfile): void {
+  console.log(chalk.bold('\nBehavior Profile'));
+  const maturityLabels = ['', 'Lv1 Basic', 'Lv2 Structured', 'Lv3 Advanced', 'Lv4 Expert'];
+  console.log(`  ${'ftrr'.padEnd(20)} ${progressBar(behavior.ftrr)}  ${behavior.ftrr.toFixed(2)}  ${styleLabel(behavior.ftrr)}`);
+  console.log(`  ${'context_obesity'.padEnd(20)} ${progressBar(behavior.context_obesity)}  ${behavior.context_obesity.toFixed(2)}  ${behavior.context_obesity > 0.6 ? chalk.red('HIGH') : chalk.green('good')}`);
+  console.log(`  ${'delegation_maturity'.padEnd(20)} ${chalk.cyan(maturityLabels[behavior.delegation_maturity] ?? `Lv${behavior.delegation_maturity}`)}`);
+}
+
+function printGrowth(growth: GrowthSnapshot[]): void {
+  if (growth.length === 0) return;
+  console.log(chalk.bold('\nGrowth Timeline'));
+  for (const snap of growth) {
+    const bar = progressBar(snap.overall_score, 8);
+    console.log(`  ${snap.period}  ${bar}  avg: ${snap.overall_score.toFixed(2)}  (${chalk.dim(String(snap.event_count) + ' events')})`);
+  }
+}
+
 function printDomains(domains: DomainStats[]): void {
   if (domains.length === 0) return;
   console.log(chalk.bold('\nDomain Performance'));
@@ -91,13 +110,20 @@ async function runAnalyze(): Promise<void> {
   const dnaCode = generateDnaCode(style);
   const weaknesses = diagnoseWeaknesses(style);
   const domains = aggregateDomains(events);
+  const behavior = computeBehavior(events);
+  const growth = computeGrowth(events);
 
   console.log(`Events: ${chalk.cyan(String(applyCount))} apply, ${chalk.cyan(String(scoreCount))} score`);
   console.log(`DNA: ${chalk.bold.cyan(dnaCode)}`);
 
   printStyleProfile(style);
+  printBehavior(behavior);
   printWeaknesses(weaknesses);
   printDomains(domains);
+  printGrowth(growth);
+
+  // 기존 profile에서 adaptive 설정 보존
+  const existingProfile = await loadProfile().catch(() => null);
 
   await saveProfile({
     version: '1',
@@ -107,8 +133,9 @@ async function runAnalyze(): Promise<void> {
     dna_code: dnaCode,
     weaknesses,
     domains,
-    adaptive: { enabled: false, rules: [] },
-    growth: [],
+    adaptive: existingProfile?.adaptive ?? { enabled: false, rules: [] },
+    behavior,
+    growth,
     total_events: events.length,
   });
 

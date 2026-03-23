@@ -3,3 +3,6 @@ export * from './profiler.js';
 export * from './diagnose.js';
 export * from './linter.js';
 export * from './storage.js';
+export * from './behavior.js';
+export * from './adapt.js';
+export * from './growth.js';
