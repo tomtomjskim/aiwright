@@ -23,6 +23,7 @@ import { extractPromptMetrics } from '../intelligence/extract-metrics.js';
 import { lintComposed } from '../intelligence/linter.js';
 import { recordUsageEvent, loadProfile } from '../intelligence/storage.js';
 import { adaptFragments } from '../intelligence/adapt.js';
+import { addGitNote } from '../intelligence/git-trace.js';
 
 export function registerApplyCommand(program: Command): void {
   program
@@ -187,6 +188,18 @@ export function registerApplyCommand(program: Command): void {
           });
         } catch {
           // 이벤트 기록 실패는 apply 결과에 영향을 주지 않음
+        }
+
+        // 7b. Git note 태깅 (비침습적, 실패해도 무시)
+        try {
+          const currentProfile = await loadProfile().catch(() => null);
+          await addGitNote({
+            recipe: recipeName,
+            fragments: rendered.fragments,
+            dna_code: currentProfile?.dna_code,
+          });
+        } catch {
+          // git note 기록 실패는 apply 결과에 영향을 주지 않음
         }
 
         // 8. Update manifest

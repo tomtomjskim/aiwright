@@ -9,6 +9,9 @@ import { computeStyle, generateDnaCode, aggregateDomains } from '../intelligence
 import { diagnoseWeaknesses } from '../intelligence/diagnose.js';
 import { computeBehavior } from '../intelligence/behavior.js';
 import { computeGrowth } from '../intelligence/growth.js';
+import { buildSkillTree, renderSkillTree } from '../intelligence/skill-tree.js';
+import { generateKata } from '../intelligence/kata.js';
+import { exportProfile, syncTeam, renderTeamDashboard } from '../intelligence/team.js';
 import type { PromptStyle, Weakness, DomainStats, BehaviorProfile, GrowthSnapshot } from '../schema/user-profile.js';
 
 // ---- 유틸 ----
@@ -163,6 +166,93 @@ async function runProfile(): Promise<void> {
   printDomains(profile.domains);
 }
 
+// ---- skill-tree ----
+
+async function runSkillTree(): Promise<void> {
+  const profile = await loadProfile();
+  if (!profile) {
+    console.log(chalk.yellow('No profile found.'));
+    console.log(chalk.dim('  Run `aiwright intelligence analyze` first'));
+    return;
+  }
+
+  const root = buildSkillTree(profile.style, profile.behavior);
+  console.log(chalk.bold('Skill Tree'));
+  console.log(chalk.dim('═'.repeat(51)));
+  console.log(renderSkillTree(root));
+}
+
+// ---- kata ----
+
+async function runKata(): Promise<void> {
+  const profile = await loadProfile();
+  if (!profile) {
+    console.log(chalk.yellow('No profile found.'));
+    console.log(chalk.dim('  Run `aiwright intelligence analyze` first'));
+    return;
+  }
+
+  const kata = generateKata(profile.weaknesses, profile.style);
+  console.log(chalk.bold("Today's Kata Challenge"));
+  console.log(chalk.dim('═'.repeat(51)));
+  console.log(`${chalk.bold(kata.title)}  ${chalk.dim('[' + kata.difficulty + ']')}  ${chalk.cyan(kata.target_skill)}`);
+  console.log(chalk.dim(kata.description));
+  console.log('');
+  console.log(chalk.bold('Task:'));
+  console.log(`  ${kata.task}`);
+  console.log('');
+  console.log(chalk.bold('Success Criteria:'));
+  for (const criterion of kata.success_criteria) {
+    console.log(`  ${chalk.green('✓')} ${criterion}`);
+  }
+  if (kata.hint) {
+    console.log('');
+    console.log(chalk.dim(`Hint: ${kata.hint}`));
+  }
+}
+
+// ---- export ----
+
+async function runExport(projectDir: string): Promise<void> {
+  try {
+    const filePath = await exportProfile(projectDir);
+    console.log(chalk.green('✔') + ' Profile exported for team sharing');
+    console.log(chalk.dim(`  → ${filePath}`));
+    console.log(chalk.dim('  Commit .aiwright/team/ to your repository to share with teammates.'));
+  } catch (err) {
+    console.error(chalk.red(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`));
+    process.exit(1);
+  }
+}
+
+// ---- team-sync ----
+
+async function runTeamSync(projectDir: string): Promise<void> {
+  console.log(chalk.bold('Team Sync'));
+  console.log(chalk.dim('Scanning .aiwright/team/*.summary.yaml...'));
+
+  const report = await syncTeam(projectDir);
+
+  if (report.members.length === 0) {
+    console.log(chalk.yellow('  No team profiles found.'));
+    console.log(chalk.dim('  Run `aiwright intelligence export` on each member\'s machine,'));
+    console.log(chalk.dim('  then commit .aiwright/team/ to the shared repository.'));
+    return;
+  }
+
+  console.log(chalk.green(`  Found ${report.members.length} team member(s)`));
+  console.log(renderTeamDashboard(report));
+}
+
+// ---- team ----
+
+async function runTeam(projectDir: string): Promise<void> {
+  const report = await syncTeam(projectDir);
+  console.log(chalk.bold('Team Dashboard'));
+  console.log(chalk.dim('═'.repeat(51)));
+  console.log(renderTeamDashboard(report));
+}
+
 // ---- reset ----
 
 async function runReset(force: boolean): Promise<void> {
@@ -188,16 +278,22 @@ async function runReset(force: boolean): Promise<void> {
 export function registerIntelligenceCommand(program: Command): void {
   program
     .command('intelligence <subcommand>')
-    .description('User intelligence: analyze, profile, reset')
+    .description('User intelligence: analyze, profile, skill-tree, kata, export, team-sync, team, reset')
     .option('--force', 'Skip confirmation (reset)')
     .action(async (subcommand: string, opts: { force?: boolean }) => {
+      const projectDir = process.cwd();
       try {
         switch (subcommand) {
           case 'analyze': await runAnalyze(); break;
           case 'profile': await runProfile(); break;
+          case 'skill-tree': await runSkillTree(); break;
+          case 'kata': await runKata(); break;
+          case 'export': await runExport(projectDir); break;
+          case 'team-sync': await runTeamSync(projectDir); break;
+          case 'team': await runTeam(projectDir); break;
           case 'reset': await runReset(opts.force ?? false); break;
           default:
-            console.error(chalk.red(`Unknown subcommand "${subcommand}". Available: analyze, profile, reset`));
+            console.error(chalk.red(`Unknown subcommand "${subcommand}". Available: analyze, profile, skill-tree, kata, export, team-sync, team, reset`));
             process.exit(1);
         }
       } catch (err) {

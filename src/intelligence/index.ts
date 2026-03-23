@@ -6,3 +6,7 @@ export * from './storage.js';
 export * from './behavior.js';
 export * from './adapt.js';
 export * from './growth.js';
+export * from './skill-tree.js';
+export * from './kata.js';
+export * from './team.js';
+export * from './git-trace.js';
