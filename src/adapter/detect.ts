@@ -1,10 +1,16 @@
 import { AdapterContract } from './contract.js';
 import { ClaudeCodeAdapter } from './claude-code.js';
 import { GenericAdapter } from './generic.js';
+import { CursorAdapter } from './cursor.js';
+import { CopilotAdapter } from './copilot.js';
+import { WindsurfAdapter } from './windsurf.js';
 import { AdapterNotFoundError } from '../utils/errors.js';
 
 const ADAPTERS: AdapterContract[] = [
   new ClaudeCodeAdapter(),
+  new CursorAdapter(),
+  new CopilotAdapter(),
+  new WindsurfAdapter(),
   new GenericAdapter(),
 ];
 

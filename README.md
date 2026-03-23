@@ -458,9 +458,9 @@ recipes:
 |---------|-------------|--------|
 | **claude-code** | `CLAUDE.md` | Available |
 | **generic** | stdout | Available |
-| cursor | `.cursorrules` | Phase 5 |
-| copilot | `copilot-instructions.md` | Phase 5 |
-| windsurf | `.windsurfrules` | Phase 5 |
+| **cursor** | `.cursorrules` | Available |
+| **copilot** | `.github/copilot-instructions.md` | Available |
+| **windsurf** | `.windsurfrules` | Available |
 
 ---
 
@@ -500,7 +500,7 @@ graph LR
 - [x] **Phase 2b**: Behavior Analysis — PCR/FTRR metrics, Adaptive AI, Linter (4 rules)
 - [x] **Phase 2c**: Visualization & Team — Skill Tree, Prompt Kata, Team Dashboard, Git AI-Trace
 - [x] **Phase 3**: Drift Detection — Drift Detection (3-level), LLM-as-Judge (simulation), Self-tuning
-- [ ] **Phase 4**: Multi-Adapter — Cursor, Copilot, Windsurf
+- [x] **Phase 4**: Multi-Adapter — Cursor, Copilot, Windsurf
 - [ ] **Phase 5**: Advanced — Bayesian Optimization, Dual Evolution
 
 ---

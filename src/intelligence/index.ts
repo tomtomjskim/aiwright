@@ -13,3 +13,5 @@ export * from './git-trace.js';
 export * from './drift.js';
 export * from './llm-judge.js';
 export * from './self-tune.js';
+export * from './optimizer.js';
+export * from './evolution.js';

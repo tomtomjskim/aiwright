@@ -2,8 +2,10 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import readline from 'node:readline';
 import { rm } from 'node:fs/promises';
+import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import yaml from 'js-yaml';
 import { loadEvents, loadProfile, saveProfile } from '../intelligence/storage.js';
 import { detectDrift } from '../intelligence/drift.js';
 import { judgePrompt } from '../intelligence/llm-judge.js';
@@ -14,6 +16,12 @@ import { computeGrowth } from '../intelligence/growth.js';
 import { buildSkillTree, renderSkillTree } from '../intelligence/skill-tree.js';
 import { generateKata } from '../intelligence/kata.js';
 import { exportProfile, syncTeam, renderTeamDashboard } from '../intelligence/team.js';
+import { optimizeCombination } from '../intelligence/optimizer.js';
+import { evolveFragments } from '../intelligence/evolution.js';
+import { resolveAllFragments, resolveFragment } from '../core/resolver.js';
+import { loadFragment } from '../core/loader.js';
+import { ProjectConfigSchema } from '../schema/config.js';
+import { fileExists } from '../utils/fs.js';
 import type { PromptStyle, Weakness, DomainStats, BehaviorProfile, GrowthSnapshot } from '../schema/user-profile.js';
 
 // ---- 유틸 ----
@@ -413,12 +421,199 @@ function buildSimulatedPrompt(
   return parts.join('\n\n');
 }
 
+// ---- optimize ----
+
+async function runOptimize(recipeName: string): Promise<void> {
+  const projectDir = process.cwd();
+  const configPath = path.join(projectDir, 'aiwright.config.yaml');
+
+  console.log(chalk.bold(`Optimization: ${recipeName}`));
+  console.log(chalk.dim('═'.repeat(39)));
+
+  // 설정 파일 로드 (없으면 빈 recipe로 진행)
+  let recipeFragments: string[] = [];
+  if (await fileExists(configPath)) {
+    try {
+      const rawConfig = await fs.readFile(configPath, 'utf-8');
+      const parsedConfig = yaml.load(rawConfig);
+      const configResult = ProjectConfigSchema.safeParse(parsedConfig);
+      if (configResult.success) {
+        const recipeEntry = configResult.data.recipes[recipeName];
+        if (recipeEntry) {
+          recipeFragments = recipeEntry.fragments
+            .filter((e) => e.enabled !== false)
+            .map((e) => e.fragment);
+        }
+      }
+    } catch {
+      // 설정 파일 로드 실패 시 빈 조합으로 진행
+    }
+  }
+
+  // 사용 가능한 모든 Fragment 로드
+  const resolveOpts = { projectDir };
+  const allResolved = await resolveAllFragments(resolveOpts);
+  const allFragments = await Promise.all(
+    allResolved.map((r) => loadFragment(r.path).catch(() => null)),
+  ).then((results) => results.filter((f): f is NonNullable<typeof f> => f !== null));
+
+  if (allFragments.length === 0) {
+    console.log(chalk.yellow('  No fragments available.'));
+    console.log(chalk.dim('  Run `aiwright add` or create fragments in .aiwright/fragments/'));
+    return;
+  }
+
+  const availableNames = allFragments.map((f) => f.meta.name);
+
+  const result = optimizeCombination(allFragments, {
+    available_fragments: availableNames,
+    current_recipe_fragments: recipeFragments,
+    max_iterations: 20,
+    target_metric: 'overall',
+  });
+
+  const improvementPct = (result.improvement * 100).toFixed(1);
+  const improvementStr =
+    result.improvement > 0
+      ? chalk.green(`+${improvementPct}%`)
+      : result.improvement < 0
+        ? chalk.red(`${improvementPct}%`)
+        : chalk.dim('no change');
+
+  console.log(`Iterations: ${chalk.cyan(String(result.iterations))} / 20`);
+  console.log(
+    `Current score: ${chalk.dim(
+      result.history.length > 0 ? result.history[0].score.toFixed(2) : '0.00',
+    )}`,
+  );
+  console.log(`Best score: ${chalk.green(result.best_score.toFixed(2))} (${improvementStr})`);
+  console.log('');
+  console.log(chalk.bold('Suggested combination:'));
+
+  const currentSet = new Set(recipeFragments);
+  const bestSet = new Set(result.best_combination);
+
+  // kept
+  for (const name of result.best_combination) {
+    if (currentSet.has(name)) {
+      console.log(`  ${chalk.dim('+')} ${name.padEnd(35)} ${chalk.dim('(kept)')}`);
+    }
+  }
+  // added
+  for (const name of result.best_combination) {
+    if (!currentSet.has(name)) {
+      const frag = allFragments.find((f) => f.meta.name === name);
+      const slot = frag?.meta.slot ?? '';
+      console.log(
+        `  ${chalk.green('+')} ${chalk.green(name.padEnd(35))} ${chalk.cyan(`(NEW — slot: ${slot})`)}`,
+      );
+    }
+  }
+  // removed
+  for (const name of recipeFragments) {
+    if (!bestSet.has(name)) {
+      const frag = allFragments.find((f) => f.meta.name === name);
+      const conflictNote = frag?.meta.conflicts_with.length
+        ? `conflicts with ${frag.meta.conflicts_with[0]}`
+        : 'removed'
+      ;
+      console.log(`  ${chalk.red('-')} ${chalk.red(name.padEnd(35))} ${chalk.dim(`(${conflictNote})`)}`);
+    }
+  }
+
+  console.log('');
+  console.log(
+    chalk.dim(`Apply this? Run: aiwright apply ${recipeName} with updated config`),
+  );
+}
+
+// ---- evolve ----
+
+async function runEvolve(recipeName: string): Promise<void> {
+  const projectDir = process.cwd();
+  const configPath = path.join(projectDir, 'aiwright.config.yaml');
+
+  console.log(chalk.bold(`Evolution Suggestions: ${recipeName}`));
+  console.log(chalk.dim('═'.repeat(39)));
+
+  // 프로파일 로드
+  const profile = await loadProfile().catch(() => null);
+  if (!profile) {
+    console.log(chalk.yellow('  No profile found.'));
+    console.log(chalk.dim('  Run `aiwright intelligence analyze` first'));
+    return;
+  }
+
+  // Recipe의 Fragment 이름 목록 로드
+  let recipeFragments: string[] = [];
+  if (await fileExists(configPath)) {
+    try {
+      const rawConfig = await fs.readFile(configPath, 'utf-8');
+      const parsedConfig = yaml.load(rawConfig);
+      const configResult = ProjectConfigSchema.safeParse(parsedConfig);
+      if (configResult.success) {
+        const recipeEntry = configResult.data.recipes[recipeName];
+        if (recipeEntry) {
+          recipeFragments = recipeEntry.fragments
+            .filter((e) => e.enabled !== false)
+            .map((e) => e.fragment);
+        }
+      }
+    } catch {
+      // fallback
+    }
+  }
+
+  // Fragment 로드
+  const resolveOpts = { projectDir };
+  const fragmentFiles = await Promise.all(
+    recipeFragments.map(async (name) => {
+      try {
+        const resolved = await resolveFragment(name, resolveOpts);
+        return loadFragment(resolved.path);
+      } catch {
+        return null;
+      }
+    }),
+  ).then((results) => results.filter((f): f is NonNullable<typeof f> => f !== null));
+
+  if (fragmentFiles.length === 0) {
+    console.log(chalk.yellow('  No fragments found for this recipe.'));
+    return;
+  }
+
+  const weaknesses = diagnoseWeaknesses(profile.style);
+  const result = evolveFragments(fragmentFiles, profile.style, weaknesses);
+
+  if (result.evolved_fragments.length === 0) {
+    console.log(chalk.dim('  No evolution suggestions — all fragments look good!'));
+  } else {
+    for (const evo of result.evolved_fragments) {
+      console.log('');
+      console.log(`${chalk.bold('Fragment:')} ${chalk.cyan(evo.original)}`);
+      console.log(`  ${chalk.dim('Type:')} ${chalk.yellow(evo.improvement_type)}`);
+      const previewLines = evo.suggestion.split('\n').slice(0, 3);
+      for (const line of previewLines) {
+        console.log(`  ${chalk.dim('→')} ${line}`);
+      }
+      if (evo.suggestion.split('\n').length > 3) {
+        console.log(chalk.dim(`  ... (${evo.suggestion.split('\n').length - 3} more lines)`));
+      }
+    }
+  }
+
+  console.log('');
+  console.log(chalk.bold('Strategy Evolution:'));
+  console.log(`  ${chalk.dim('Current:')}   ${result.strategy_evolution.current}`);
+  console.log(`  ${chalk.dim('Suggested:')} ${chalk.cyan(result.strategy_evolution.suggested)}`);
+}
+
 // ---- register ----
 
 export function registerIntelligenceCommand(program: Command): void {
   program
     .command('intelligence <subcommand> [target]')
-    .description('User intelligence: analyze, profile, skill-tree, kata, export, team-sync, team, reset, drift, judge')
+    .description('User intelligence: analyze, profile, skill-tree, kata, export, team-sync, team, reset, drift, judge, optimize, evolve')
     .option('--force', 'Skip confirmation (reset)')
     .action(async (subcommand: string, target: string | undefined, opts: { force?: boolean }) => {
       const projectDir = process.cwd();
@@ -434,8 +629,10 @@ export function registerIntelligenceCommand(program: Command): void {
           case 'reset': await runReset(opts.force ?? false); break;
           case 'drift': await runDrift(target ?? 'default'); break;
           case 'judge': await runJudge(target ?? 'default'); break;
+          case 'optimize': await runOptimize(target ?? 'default'); break;
+          case 'evolve': await runEvolve(target ?? 'default'); break;
           default:
-            console.error(chalk.red(`Unknown subcommand "${subcommand}". Available: analyze, profile, skill-tree, kata, export, team-sync, team, reset, drift, judge`));
+            console.error(chalk.red(`Unknown subcommand "${subcommand}". Available: analyze, profile, skill-tree, kata, export, team-sync, team, reset, drift, judge, optimize, evolve`));
             process.exit(1);
         }
       } catch (err) {

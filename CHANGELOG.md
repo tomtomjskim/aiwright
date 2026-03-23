@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-03-23
+
+### Added
+- **Phase 4: Multi-Adapter — Cursor, Copilot, Windsurf**
+  - `src/adapter/cursor.ts` — CursorAdapter targeting `.cursorrules`
+    - detect: `.cursorrules` → confidence 0.9, `.cursor/` directory → 0.8
+    - apply: full ownership with header injection; backs up pre-existing non-managed files to `.cursorrules.backup`
+    - read: returns prompt content with header stripped
+    - remove: deletes managed file and restores backup if present
+  - `src/adapter/copilot.ts` — CopilotAdapter targeting `.github/copilot-instructions.md`
+    - detect: file presence → confidence 0.9
+    - apply: auto-creates `.github/` directory; backs up to `.github/copilot-instructions.md.backup`
+    - read/remove: same backup-restore pattern
+  - `src/adapter/windsurf.ts` — WindsurfAdapter targeting `.windsurfrules`
+    - detect: `.windsurfrules` presence → confidence 0.9
+    - apply/read/remove: same pattern as CursorAdapter (`.windsurfrules.backup`)
+  - All three adapters registered in `ADAPTERS` array in `detect.ts`
+  - All three adapters exported from `src/adapter/index.ts`
+  - 44 new tests across `cursor.test.ts`, `copilot.test.ts`, `windsurf.test.ts`
+
 ## [0.4.0] - 2026-03-23
 
 ### Added
