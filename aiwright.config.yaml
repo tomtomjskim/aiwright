@@ -1,0 +1,33 @@
+version: '1'
+adapter: claude-code
+
+vars:
+  language: TypeScript
+  project_name: aiwright
+
+paths:
+  local: .aiwright/fragments
+
+recipes:
+  default:
+    description: aiwright development standard prompt
+    fragments:
+      - fragment: system-role-engineer
+        vars:
+          role: senior TypeScript open-source framework developer
+      - fragment: open-source-conventions
+      - fragment: test-driven
+      - fragment: typescript-strict
+      - fragment: constraint-no-hallucination
+      - fragment: constraint-concise
+      - fragment: output-markdown
+
+  review:
+    description: Code review prompt for aiwright
+    fragments:
+      - fragment: system-role-engineer
+        vars:
+          role: expert code reviewer for TypeScript CLI tools
+      - fragment: typescript-strict
+      - fragment: constraint-no-hallucination
+      - fragment: output-markdown
