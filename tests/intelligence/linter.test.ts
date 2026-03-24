@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { lintComposed } from '../../src/intelligence/linter.js';
+import { lintComposed, lintBehavior } from '../../src/intelligence/linter.js';
 import type { LintResult } from '../../src/intelligence/linter.js';
-import type { PromptMetrics } from '../../src/schema/usage-event.js';
+import type { PromptMetrics, UsageEvent } from '../../src/schema/usage-event.js';
 
 function makeMetrics(overrides: Partial<PromptMetrics> = {}): PromptMetrics {
   return {
@@ -240,5 +240,149 @@ describe('lintComposed — result shape', () => {
       expect(typeof r.message).toBe('string');
       expect(r.message.length).toBeGreaterThan(0);
     }
+  });
+});
+
+// ── lintBehavior helpers ─────────────────────────────────────────────────────
+
+const BASE_PROMPT_METRICS: PromptMetrics = {
+  total_chars: 200,
+  slot_count: 2,
+  variable_count: 0,
+  variable_filled: 0,
+  has_constraint: true,
+  has_example: false,
+  has_context: false,
+  sentence_count: 4,
+  imperative_ratio: 0.5,
+};
+
+function makeApplyEvent(recipe: string, score?: number): UsageEvent {
+  return {
+    event_id: crypto.randomUUID(),
+    event_type: 'apply',
+    timestamp: new Date().toISOString(),
+    recipe,
+    fragments: [],
+    adapter: 'generic',
+    domain_tags: [],
+    prompt_metrics: BASE_PROMPT_METRICS,
+    outcome: score !== undefined ? { score } : undefined,
+  };
+}
+
+function makeScoreEvent(recipe: string, score: number): UsageEvent {
+  return {
+    event_id: crypto.randomUUID(),
+    event_type: 'score',
+    timestamp: new Date().toISOString(),
+    recipe,
+    fragments: [],
+    adapter: 'generic',
+    domain_tags: [],
+    prompt_metrics: BASE_PROMPT_METRICS,
+    outcome: { score },
+  };
+}
+
+// ── PS011 ────────────────────────────────────────────────────────────────────
+
+describe('PS011 — Persistent Low Score (WARN)', () => {
+  it('triggers when the last 5 scored events all have score < 0.5', () => {
+    const events: UsageEvent[] = [
+      // 6 scored events — oldest has score 0.8 (should be excluded from recent-5 window)
+      makeScoreEvent('my-recipe', 0.8),
+      makeScoreEvent('my-recipe', 0.2),
+      makeScoreEvent('my-recipe', 0.3),
+      makeScoreEvent('my-recipe', 0.1),
+      makeScoreEvent('my-recipe', 0.4),
+      makeScoreEvent('my-recipe', 0.2),
+    ];
+    const results = lintBehavior(events, 'my-recipe');
+    const ps011 = results.find((r) => r.id === 'PS011');
+    expect(ps011).toBeDefined();
+    expect(ps011?.severity).toBe('WARN');
+  });
+
+  it('does NOT trigger when the recent 5 scored events are not all below 0.5', () => {
+    const events: UsageEvent[] = [
+      makeScoreEvent('my-recipe', 0.2),
+      makeScoreEvent('my-recipe', 0.3),
+      makeScoreEvent('my-recipe', 0.6), // one high score breaks the streak
+      makeScoreEvent('my-recipe', 0.1),
+      makeScoreEvent('my-recipe', 0.4),
+    ];
+    const results = lintBehavior(events, 'my-recipe');
+    const ps011 = results.find((r) => r.id === 'PS011');
+    expect(ps011).toBeUndefined();
+  });
+
+  it('does NOT trigger when fewer than 5 scored events exist', () => {
+    const events: UsageEvent[] = [
+      makeScoreEvent('my-recipe', 0.1),
+      makeScoreEvent('my-recipe', 0.2),
+      makeScoreEvent('my-recipe', 0.3),
+      makeScoreEvent('my-recipe', 0.4),
+    ];
+    const results = lintBehavior(events, 'my-recipe');
+    const ps011 = results.find((r) => r.id === 'PS011');
+    expect(ps011).toBeUndefined();
+  });
+
+  it('ignores events from a different recipe', () => {
+    const events: UsageEvent[] = [
+      makeScoreEvent('other-recipe', 0.1),
+      makeScoreEvent('other-recipe', 0.2),
+      makeScoreEvent('other-recipe', 0.3),
+      makeScoreEvent('other-recipe', 0.1),
+      makeScoreEvent('other-recipe', 0.2),
+    ];
+    const results = lintBehavior(events, 'my-recipe');
+    const ps011 = results.find((r) => r.id === 'PS011');
+    expect(ps011).toBeUndefined();
+  });
+});
+
+// ── PS012 ────────────────────────────────────────────────────────────────────
+
+describe('PS012 — No Score Recorded (INFO)', () => {
+  it('triggers when apply count >= 10 and zero scored events exist', () => {
+    const events: UsageEvent[] = Array.from({ length: 10 }, () =>
+      makeApplyEvent('my-recipe'),
+    );
+    const results = lintBehavior(events, 'my-recipe');
+    const ps012 = results.find((r) => r.id === 'PS012');
+    expect(ps012).toBeDefined();
+    expect(ps012?.severity).toBe('INFO');
+    expect(ps012?.message).toContain('10');
+  });
+
+  it('does NOT trigger when apply count >= 10 but at least one score exists', () => {
+    const events: UsageEvent[] = [
+      ...Array.from({ length: 10 }, () => makeApplyEvent('my-recipe')),
+      makeScoreEvent('my-recipe', 0.7),
+    ];
+    const results = lintBehavior(events, 'my-recipe');
+    const ps012 = results.find((r) => r.id === 'PS012');
+    expect(ps012).toBeUndefined();
+  });
+
+  it('does NOT trigger when apply count is below 10', () => {
+    const events: UsageEvent[] = Array.from({ length: 9 }, () =>
+      makeApplyEvent('my-recipe'),
+    );
+    const results = lintBehavior(events, 'my-recipe');
+    const ps012 = results.find((r) => r.id === 'PS012');
+    expect(ps012).toBeUndefined();
+  });
+
+  it('counts only events matching the given recipe name', () => {
+    // 10 applies for a different recipe — should not trigger for 'my-recipe'
+    const events: UsageEvent[] = Array.from({ length: 10 }, () =>
+      makeApplyEvent('other-recipe'),
+    );
+    const results = lintBehavior(events, 'my-recipe');
+    const ps012 = results.find((r) => r.id === 'PS012');
+    expect(ps012).toBeUndefined();
   });
 });
