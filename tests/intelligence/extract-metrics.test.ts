@@ -95,6 +95,28 @@ describe('extractPromptMetrics — variable detection', () => {
   });
 });
 
+describe('extractPromptMetrics — context_chars', () => {
+  it('returns context_chars equal to context section length', () => {
+    const contextText = 'Background: the user is a developer.';
+    const sections = new Map([['context', contextText]]);
+    const result = extractPromptMetrics(contextText, sections);
+    expect(result.context_chars).toBe(contextText.length);
+  });
+
+  it('returns context_chars = 0 when context section is absent', () => {
+    const sections = new Map([['instruction', 'Do the task.']]);
+    const result = extractPromptMetrics('Do the task.', sections);
+    expect(result.context_chars).toBe(0);
+  });
+
+  it('context_chars reflects raw length (not trimmed)', () => {
+    const contextText = '  padded context  ';
+    const sections = new Map([['context', contextText]]);
+    const result = extractPromptMetrics(contextText, sections);
+    expect(result.context_chars).toBe(contextText.length);
+  });
+});
+
 describe('extractPromptMetrics — boolean flags', () => {
   it('has_constraint is true when constraint slot is present with content', () => {
     const sections = new Map([['constraint', 'Never output HTML.']]);

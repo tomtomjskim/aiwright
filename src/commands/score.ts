@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import { randomUUID } from 'node:crypto';
 import { recordScore } from '../scoring/user-signal.js';
 import { readHistory, getOverallTrend } from '../scoring/history.js';
-import { AiwrightError } from '../utils/errors.js';
+import { AiwrightError, ValidationError, CommandError } from '../utils/errors.js';
 import { recordUsageEvent } from '../intelligence/storage.js';
 
 function renderAsciiChart(values: number[]): string {
@@ -55,9 +55,10 @@ export function registerScoreCommand(program: Command): void {
           const value = parseFloat(opts.set);
 
           if (isNaN(value) || value < 0 || value > 1) {
-            console.error(chalk.red('Error [E004]: Score value must be between 0.0 and 1.0'));
-            console.error(chalk.dim('  Example: aiwright score my-fragment --set 0.85'));
-            process.exit(2);
+            throw new ValidationError(
+              'Score value must be between 0.0 and 1.0',
+              'Example: aiwright score my-fragment --set 0.85',
+            );
           }
 
           const result = await recordScore(name, value, opts.note);
@@ -84,6 +85,7 @@ export function registerScoreCommand(program: Command): void {
                 has_constraint: false,
                 has_example: false,
                 has_context: false,
+                context_chars: 0,
                 variable_count: 0,
                 variable_filled: 0,
                 sentence_count: 0,
@@ -151,23 +153,10 @@ export function registerScoreCommand(program: Command): void {
         console.log(chalk.dim(`${history.length} record(s) — avg: ${avg.toFixed(3)}`));
         console.log('');
       } catch (err) {
-        if (err instanceof AiwrightError) {
-          console.error(chalk.red(err.format()));
-          if (err.suggestion) {
-            console.error(chalk.dim(`  Suggestion: ${err.suggestion}`));
-          }
-          process.exit(1);
-        }
         if (err instanceof RangeError) {
-          console.error(chalk.red(`Error [E004]: ${err.message}`));
-          process.exit(2);
+          throw new CommandError(err.message, 2);
         }
-        if (err instanceof Error) {
-          console.error(chalk.red(`Error: ${err.message}`));
-        } else {
-          console.error(chalk.red('Unexpected error during score'));
-        }
-        process.exit(1);
+        throw err;
       }
     });
 }

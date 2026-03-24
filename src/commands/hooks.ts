@@ -146,10 +146,7 @@ export function registerHooksCommand(program: Command): void {
         console.log(chalk.dim(`  → ${filePath}`));
         console.log(chalk.dim(`  Command: ${hookCommand}`));
       } catch (err) {
-        console.error(
-          chalk.red(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`),
-        );
-        process.exit(1);
+        throw err;
       }
     });
 
@@ -196,10 +193,7 @@ export function registerHooksCommand(program: Command): void {
           console.log(chalk.dim('No aiwright hooks found to remove.'));
         }
       } catch (err) {
-        console.error(
-          chalk.red(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`),
-        );
-        process.exit(1);
+        throw err;
       }
     });
 }

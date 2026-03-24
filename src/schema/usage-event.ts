@@ -9,6 +9,7 @@ export const PromptMetricsSchema = z.object({
   has_constraint: z.boolean(),
   has_example: z.boolean(),
   has_context: z.boolean(),
+  context_chars: z.number().int().min(0).default(0),
   variable_count: z.number().int().min(0),
   variable_filled: z.number().int().min(0),
   sentence_count: z.number().int().min(0),

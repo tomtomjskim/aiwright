@@ -222,7 +222,7 @@ graph TB
 
 ## User Intelligence
 
-> **Phase 2** — Coming soon. The prompt library (below) is available now.
+> **Phase 2** — User Intelligence Engine — profile your AI usage patterns, diagnose weaknesses, and adapt AI behavior.
 
 ### A · Personal Profile
 
@@ -461,6 +461,39 @@ recipes:
 
 ---
 
+## Quality Judge
+
+aiwright can evaluate your prompts using LLM-based quality assessment.
+
+### Modes
+
+| Mode | Description | Cost |
+|------|-------------|------|
+| `heuristic` | Rule-based analysis (default) | Free |
+| `llm` | LLM evaluates prompt quality | ~$0.002/call |
+| `hybrid` | LLM (70%) + Heuristic (30%) blend | ~$0.002/call |
+
+### Configuration
+
+```yaml
+judge:
+  mode: llm
+  provider: anthropic          # or openai
+  model: claude-haiku-4-5-20251001
+  api_key_env: ANTHROPIC_API_KEY
+  cache: true                  # 7-day cache (default)
+  daily_limit: 50
+```
+
+### Cost Management
+
+- Results are cached for 7 days (same prompt + model = free)
+- Daily and monthly call limits prevent unexpected costs
+- Budget status shown in `apply` output
+- No API key → automatic fallback to heuristic (zero cost)
+
+---
+
 ## Adapters
 
 | Adapter | Target File | Status |
@@ -482,12 +515,12 @@ graph LR
         HE["Heuristic<br/><i>auto structural check</i>"]
     end
 
-    subgraph next ["Phase 2 — Next"]
+    subgraph next ["Phase 2 — Available"]
         LJ["LLM-as-Judge<br/><i>AI evaluates quality</i>"]
         UP["User Profile<br/><i>pattern analysis</i>"]
     end
 
-    subgraph future ["Phase 3 — Future"]
+    subgraph future ["Phase 3 — Available"]
         TG["TextGrad<br/><i>directional feedback</i>"]
         DD["Drift Detection<br/><i>auto-deactivation</i>"]
     end
@@ -532,7 +565,7 @@ Built on research from leading AI labs:
 ## Testing
 
 ```
-12 test files · 165 test cases · all passing
+42 test files · 641 test cases · all passing
 ```
 
 ```bash

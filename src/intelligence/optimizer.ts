@@ -65,7 +65,7 @@ function scoreCombo(
 }
 
 /**
- * MIPROv2 영감의 Bayesian-like Fragment 조합 최적화
+ * Hill-climbing neighborhood search 기반 Fragment 조합 최적화 (MIPROv2의 조합 탐색 개념 참고)
  *
  * 알고리즘:
  * 1. 현재 조합의 heuristic score를 기준선으로

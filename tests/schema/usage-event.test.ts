@@ -14,6 +14,7 @@ describe('PromptMetricsSchema', () => {
     has_constraint: true,
     has_example: false,
     has_context: true,
+    context_chars: 300,
     sentence_count: 5,
     imperative_ratio: 0.4,
   };
@@ -26,6 +27,17 @@ describe('PromptMetricsSchema', () => {
     expect(result.variable_filled).toBe(2);
     expect(result.has_constraint).toBe(true);
     expect(result.imperative_ratio).toBe(0.4);
+    expect(result.context_chars).toBe(300);
+  });
+
+  it('defaults context_chars to 0 when not provided (backward compat)', () => {
+    const { context_chars: _, ...withoutContextChars } = validMetrics;
+    const result = PromptMetricsSchema.parse(withoutContextChars);
+    expect(result.context_chars).toBe(0);
+  });
+
+  it('fails when context_chars is negative', () => {
+    expect(() => PromptMetricsSchema.parse({ ...validMetrics, context_chars: -1 })).toThrow();
   });
 
   it('fails when total_chars is negative', () => {

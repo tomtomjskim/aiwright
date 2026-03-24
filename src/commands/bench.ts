@@ -17,6 +17,7 @@ import {
   CasesFileError,
   AiwrightError,
   ValidationError,
+  CommandError,
 } from '../utils/errors.js';
 import { ScoreResultSchema } from '../schema/score.js';
 
@@ -223,22 +224,10 @@ export function registerBenchCommand(program: Command): void {
 
         // Exit with error if not all passed
         if (passRate < 1) {
-          process.exit(1);
+          throw new CommandError(`Bench failed: ${passedAssertions}/${totalAssertions} assertions passed`);
         }
       } catch (err) {
-        if (err instanceof AiwrightError) {
-          console.error(chalk.red(err.format()));
-          if (err.suggestion) {
-            console.error(chalk.dim(`  Suggestion: ${err.suggestion}`));
-          }
-          process.exit(1);
-        }
-        if (err instanceof Error) {
-          console.error(chalk.red(`Error: ${err.message}`));
-        } else {
-          console.error(chalk.red('Unexpected error during bench'));
-        }
-        process.exit(1);
+        throw err;
       }
     });
 }

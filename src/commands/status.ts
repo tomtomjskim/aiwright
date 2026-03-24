@@ -85,10 +85,7 @@ export function registerStatusCommand(program: Command): void {
 
         console.log(chalk.dim('═'.repeat(43)));
       } catch (err) {
-        console.error(
-          chalk.red(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`),
-        );
-        process.exit(1);
+        throw err;
       }
     });
 }

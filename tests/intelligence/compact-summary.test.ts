@@ -125,4 +125,71 @@ describe('printCompactSummary', () => {
     const output = consoleLogSpy.mock.calls[0][0] as string;
     expect(output).toContain('WARN:1');
   });
+
+  describe('judge info display', () => {
+    it('judgeModel specified: score line contains model name', () => {
+      printCompactSummary(makeData({ judgeModel: 'claude-haiku-4-5' }));
+      const allOutput = consoleLogSpy.mock.calls.map((c) => c[0] as string).join('\n');
+      expect(allOutput).toContain('claude-haiku-4-5');
+    });
+
+    it('judgeCached=true: score line contains "(cached)"', () => {
+      printCompactSummary(makeData({ judgeCached: true, judgeModel: 'claude-haiku-4-5' }));
+      const allOutput = consoleLogSpy.mock.calls.map((c) => c[0] as string).join('\n');
+      expect(allOutput).toContain('(cached)');
+      expect(allOutput).not.toContain('claude-haiku-4-5');
+    });
+
+    it('judgeCached=true: no Cost line printed', () => {
+      printCompactSummary(
+        makeData({ judgeCached: true, judgeCost: 0.0016, judgeTokens: { input: 823, output: 241 } }),
+      );
+      const allOutput = consoleLogSpy.mock.calls.map((c) => c[0] as string).join('\n');
+      expect(allOutput).not.toContain('Cost:');
+    });
+
+    it('judgeCost specified (not cached): Cost line printed', () => {
+      printCompactSummary(
+        makeData({ judgeCost: 0.0016, judgeTokens: { input: 823, output: 241 } }),
+      );
+      const allOutput = consoleLogSpy.mock.calls.map((c) => c[0] as string).join('\n');
+      expect(allOutput).toContain('Cost:');
+      expect(allOutput).toContain('$0.0016');
+    });
+
+    it('judgeCost with tokens: token counts appear in Cost line', () => {
+      printCompactSummary(
+        makeData({ judgeCost: 0.0016, judgeTokens: { input: 823, output: 241 } }),
+      );
+      const allOutput = consoleLogSpy.mock.calls.map((c) => c[0] as string).join('\n');
+      expect(allOutput).toContain('823');
+      expect(allOutput).toContain('241');
+    });
+
+    it('budgetDaily specified: Budget info appears in Cost line', () => {
+      printCompactSummary(
+        makeData({ judgeCost: 0.0016, budgetDaily: { used: 12, limit: 50 } }),
+      );
+      const allOutput = consoleLogSpy.mock.calls.map((c) => c[0] as string).join('\n');
+      expect(allOutput).toContain('Budget:');
+      expect(allOutput).toContain('12/50');
+      expect(allOutput).toContain('daily');
+    });
+
+    it('no judge info: output identical to baseline (2 lines, no Cost/Budget)', () => {
+      printCompactSummary(makeData());
+      expect(consoleLogSpy).toHaveBeenCalledTimes(2);
+      const allOutput = consoleLogSpy.mock.calls.map((c) => c[0] as string).join('\n');
+      expect(allOutput).not.toContain('Cost:');
+      expect(allOutput).not.toContain('Budget:');
+      expect(allOutput).not.toContain('(cached)');
+    });
+
+    it('judgeCost without tokens: Cost line has no token parenthetical', () => {
+      printCompactSummary(makeData({ judgeCost: 0.002 }));
+      const allOutput = consoleLogSpy.mock.calls.map((c) => c[0] as string).join('\n');
+      expect(allOutput).toContain('Cost:');
+      expect(allOutput).not.toContain('in /');
+    });
+  });
 });

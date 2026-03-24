@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **LLM-as-Judge**: Real LLM API integration for prompt quality evaluation
+  - Anthropic Claude and OpenAI providers (direct HTTP, no SDK dependency)
+  - Three modes: heuristic (free), llm, hybrid (LLM 70% + heuristic 30%)
+  - SHA-256 prompt cache (7-day TTL, zero-cost repeat evaluations)
+  - Daily/monthly budget management with cost estimation
+  - Automatic heuristic fallback on API failure, missing key, or budget exceeded
+  - Judge configuration via `aiwright.config.yaml` judge section
+
 ## [1.0.0] - 2026-03-23
 
 ### Added
@@ -20,8 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `/aiwright-help`, `/aiwright-apply`, `/aiwright-status`
   - `/aiwright-improve`, `/aiwright-lint`, `/aiwright-skill-tree`
 - **LLM Tool Boilerplate**: `.aiwright/tools.json` (OpenAI function calling compatible)
-- **Phase 5: Bayesian Optimization + Dual Evolution**
-  - `optimizer.ts`: Bayesian-like combination search (heuristic-based, zero LLM cost)
+- **Phase 5: Combination Optimization (hill-climbing) + Dual Evolution**
+  - `optimizer.ts`: Hill-climbing neighborhood search (heuristic-based, zero LLM cost; MIPROv2 조합 탐색 개념 참고)
   - `evolution.ts`: Fragment improvement suggestions (make_imperative, clarify, add_example, strengthen)
   - `aiwright intelligence optimize/evolve` CLI commands
 
@@ -54,13 +63,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.0] - 2026-03-23
 
 ### Added
-- **Phase 3: Drift Detection + LLM-as-Judge + Self-tuning**
+- **Phase 3: Drift Detection + Quality Judge (heuristic simulation) + Self-tuning**
   - `src/intelligence/drift.ts` — Drift Detection engine with 3-level alerting
     - Warning: 3 consecutive scores < 0.5
     - Adjustment: 5 consecutive scores < 0.4
     - Deactivation: 7 consecutive scores < 0.3
     - Trend analysis: improving / stable / declining (5-window comparison)
-  - `src/intelligence/llm-judge.ts` — LLM-as-Judge (simulation mode, heuristic + linter)
+  - `src/intelligence/llm-judge.ts` — Quality Judge (simulation mode, heuristic + linter; 실제 LLM API 미연동)
     - Scores prompt quality 0~1 based on lint results
     - Returns strengths, weaknesses, natural-language feedback
     - Integration point annotated for real LLM API swap (`// TODO: Replace with actual LLM API call`)
@@ -70,7 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `suggest_disable`: recipe deactivation on deactivation-level drift
     - `suggest_add`: missing constraint/example fragment injection
   - `aiwright intelligence drift [recipe]` — CLI command for drift status
-  - `aiwright intelligence judge [recipe]` — CLI command for LLM-as-Judge evaluation
+  - `aiwright intelligence judge [recipe]` — CLI command for Quality Judge evaluation (simulation mode)
   - 50 new tests across drift, llm-judge, self-tune modules
 
 ## [0.2.0] - 2026-03-23

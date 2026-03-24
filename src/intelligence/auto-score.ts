@@ -1,7 +1,8 @@
 import { computeHeuristics } from '../scoring/heuristic.js';
-import { judgePrompt } from './llm-judge.js';
+import { judgePrompt, type JudgeOptions } from './llm-judge.js';
 import type { FragmentFile } from '../schema/fragment.js';
 import type { LintResult } from './linter.js';
+import type { JudgeConfig } from '../schema/config.js';
 
 export interface ScoreBundle {
   heuristic: number;
@@ -24,6 +25,7 @@ export async function computeAutoScore(
   fullText: string,
   sections: Map<string, string>,
   lintResults: LintResult[],
+  judgeConfig?: JudgeConfig,
 ): Promise<ScoreBundle> {
   // heuristic: 메트릭 평균
   const metrics = computeHeuristics(fragmentFiles);
@@ -38,7 +40,20 @@ export async function computeAutoScore(
   let judgeWeaknesses: string[] = [];
 
   try {
-    const judgeResult = await judgePrompt(fullText);
+    const judgeOptions: JudgeOptions | undefined = judgeConfig
+      ? {
+          mode: judgeConfig.mode,
+          model: judgeConfig.model,
+          provider: judgeConfig.provider,
+          apiKeyEnv: judgeConfig.api_key_env,
+          cache: judgeConfig.cache,
+          cacheTtlHours: judgeConfig.cache_ttl_hours,
+          timeoutMs: judgeConfig.timeout_ms,
+          dailyLimit: judgeConfig.daily_limit,
+          monthlyLimit: judgeConfig.monthly_limit,
+        }
+      : undefined;
+    const judgeResult = await judgePrompt(fullText, judgeOptions);
     judge = judgeResult.score;
     model = judgeResult.model;
     judgeWeaknesses = judgeResult.weaknesses;

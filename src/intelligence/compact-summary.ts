@@ -12,6 +12,11 @@ export interface SummaryData {
   lintResults: LintResult[];
   weaknesses: Weakness[];
   quiet?: boolean;
+  judgeModel?: string;
+  judgeCost?: number;
+  judgeTokens?: { input: number; output: number };
+  judgeCached?: boolean;
+  budgetDaily?: { used: number; limit: number };
 }
 
 /**
@@ -48,9 +53,29 @@ function lintSummary(lintResults: LintResult[]): string {
  * ```
  */
 export function printCompactSummary(data: SummaryData): void {
-  const { recipeName, fragmentCount, outputPaths, dnaCode, score, lintResults, quiet } = data;
+  const {
+    recipeName,
+    fragmentCount,
+    outputPaths,
+    dnaCode,
+    score,
+    lintResults,
+    quiet,
+    judgeModel,
+    judgeCost,
+    judgeTokens,
+    judgeCached,
+    budgetDaily,
+  } = data;
   const lint = lintSummary(lintResults);
   const scoreStr = score.final.toFixed(2);
+
+  // score 레이블 조합: cached > model > 기본
+  function buildScoreLabel(): string {
+    if (judgeCached === true) return `${scoreStr} (cached)`;
+    if (judgeModel !== undefined) return `${scoreStr} (${judgeModel})`;
+    return scoreStr;
+  }
 
   if (quiet) {
     // 1줄 출력 (hook용)
@@ -70,11 +95,23 @@ export function printCompactSummary(data: SummaryData): void {
     lint === 'clean' ? chalk.green(lint) : lint.startsWith('HIGH') ? chalk.red(lint) : chalk.yellow(lint);
   console.log(
     chalk.dim(
-      `  DNA: ${chalk.cyan(dnaCode)} | Score: ${chalk.bold(scoreStr)} | Lint: `,
+      `  DNA: ${chalk.cyan(dnaCode)} | Score: ${chalk.bold(buildScoreLabel())} | Lint: `,
     ) + lintColor,
   );
 
-  // 세 번째 줄: Tip (있을 때만)
+  // 세 번째 줄: Cost + Budget (LLM 호출 시 — cached 아니고 cost 있을 때)
+  if (judgeCost !== undefined && judgeCached !== true) {
+    const costStr = `~$${judgeCost.toFixed(4)}`;
+    const tokenStr =
+      judgeTokens !== undefined
+        ? ` (${String(judgeTokens.input)} in / ${String(judgeTokens.output)} out)`
+        : '';
+    const budgetStr =
+      budgetDaily !== undefined ? ` | Budget: ${String(budgetDaily.used)}/${String(budgetDaily.limit)} daily` : '';
+    console.log(chalk.dim(`  Cost: ${costStr}${tokenStr}${budgetStr}`));
+  }
+
+  // Tip 줄 (있을 때만)
   if (data.score.tip) {
     console.log(chalk.dim(`  Tip: ${data.score.tip}`));
   }

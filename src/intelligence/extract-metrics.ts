@@ -19,6 +19,7 @@ export function extractPromptMetrics(
     sections.has('example') && (sections.get('example')?.trim().length ?? 0) > 0;
   const has_context =
     sections.has('context') && (sections.get('context')?.trim().length ?? 0) > 0;
+  const context_chars = sections.get('context')?.length ?? 0;
 
   // {{변수}} 패턴 분석
   // 렌더링 후에도 남아있는 {{...}} = 미채움 변수
@@ -49,6 +50,7 @@ export function extractPromptMetrics(
     has_constraint,
     has_example,
     has_context,
+    context_chars,
     variable_count,
     variable_filled,
     sentence_count,

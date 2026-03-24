@@ -24,6 +24,7 @@ function makeEvent(overrides: Partial<UsageEvent> = {}): UsageEvent {
       has_constraint: false,
       has_example: false,
       has_context: false,
+      context_chars: 0,
       sentence_count: 4,
       imperative_ratio: 0.5,
     },
@@ -114,27 +115,55 @@ describe('computeDelegationMaturity', () => {
 // ---- Context Obesity ----
 
 describe('computeContextObesity', () => {
-  it('returns 0 when no events have has_context=true', () => {
-    const events = [makeEvent(), makeEvent()];
-    expect(computeContextObesity(events)).toBe(0);
-  });
-
   it('returns 0 for empty events', () => {
     expect(computeContextObesity([])).toBe(0);
   });
 
-  it('returns high value when context events have slot_count <= 1 (obesity)', () => {
-    const events = [
-      makeEvent({ prompt_metrics: { total_chars: 2000, slot_count: 1, variable_count: 0, variable_filled: 0, has_constraint: false, has_example: false, has_context: true, sentence_count: 10, imperative_ratio: 0.1 } }),
-      makeEvent({ prompt_metrics: { total_chars: 2000, slot_count: 1, variable_count: 0, variable_filled: 0, has_constraint: false, has_example: false, has_context: true, sentence_count: 10, imperative_ratio: 0.1 } }),
-    ];
-    expect(computeContextObesity(events)).toBeGreaterThan(0.5);
+  it('returns 0 when all events have context_chars = 0', () => {
+    const events = [makeEvent(), makeEvent()];
+    expect(computeContextObesity(events)).toBe(0);
   });
 
-  it('returns low value when context events have many slots (not obese)', () => {
+  it('returns 1.0 when all context events exceed 60% ratio (obese)', () => {
+    // context_chars=700, total_chars=1000 → 70% > 60%
     const events = [
-      makeEvent({ prompt_metrics: { total_chars: 2000, slot_count: 5, variable_count: 2, variable_filled: 2, has_constraint: true, has_example: true, has_context: true, sentence_count: 10, imperative_ratio: 0.6 } }),
-      makeEvent({ prompt_metrics: { total_chars: 2000, slot_count: 4, variable_count: 2, variable_filled: 2, has_constraint: true, has_example: true, has_context: true, sentence_count: 10, imperative_ratio: 0.6 } }),
+      makeEvent({ prompt_metrics: { total_chars: 1000, slot_count: 2, variable_count: 0, variable_filled: 0, has_constraint: false, has_example: false, has_context: true, context_chars: 700, sentence_count: 5, imperative_ratio: 0.2 } }),
+      makeEvent({ prompt_metrics: { total_chars: 1000, slot_count: 2, variable_count: 0, variable_filled: 0, has_constraint: false, has_example: false, has_context: true, context_chars: 800, sentence_count: 5, imperative_ratio: 0.2 } }),
+    ];
+    expect(computeContextObesity(events)).toBe(1.0);
+  });
+
+  it('returns 0 when context ratio is below 60% (not obese)', () => {
+    // context_chars=300, total_chars=1000 → 30% < 60%
+    const events = [
+      makeEvent({ prompt_metrics: { total_chars: 1000, slot_count: 3, variable_count: 1, variable_filled: 1, has_constraint: true, has_example: true, has_context: true, context_chars: 300, sentence_count: 8, imperative_ratio: 0.5 } }),
+    ];
+    expect(computeContextObesity(events)).toBe(0);
+  });
+
+  it('returns 0.5 for mixed case (one obese, one not)', () => {
+    const events = [
+      // obese: 700/1000 = 70%
+      makeEvent({ prompt_metrics: { total_chars: 1000, slot_count: 2, variable_count: 0, variable_filled: 0, has_constraint: false, has_example: false, has_context: true, context_chars: 700, sentence_count: 5, imperative_ratio: 0.1 } }),
+      // not obese: 400/1000 = 40%
+      makeEvent({ prompt_metrics: { total_chars: 1000, slot_count: 3, variable_count: 1, variable_filled: 1, has_constraint: true, has_example: false, has_context: true, context_chars: 400, sentence_count: 5, imperative_ratio: 0.3 } }),
+    ];
+    expect(computeContextObesity(events)).toBe(0.5);
+  });
+
+  it('excludes events with context_chars = 0 from denominator', () => {
+    // Only the event with context_chars > 0 counts; it is obese
+    const events = [
+      makeEvent(), // context_chars = 0 → excluded
+      makeEvent({ prompt_metrics: { total_chars: 1000, slot_count: 2, variable_count: 0, variable_filled: 0, has_constraint: false, has_example: false, has_context: true, context_chars: 700, sentence_count: 5, imperative_ratio: 0.2 } }),
+    ];
+    expect(computeContextObesity(events)).toBe(1.0);
+  });
+
+  it('returns 0 when context_chars equals exactly 60% of total_chars (boundary, not obese)', () => {
+    // 600/1000 = 0.6, not strictly > 0.6
+    const events = [
+      makeEvent({ prompt_metrics: { total_chars: 1000, slot_count: 2, variable_count: 0, variable_filled: 0, has_constraint: false, has_example: false, has_context: true, context_chars: 600, sentence_count: 5, imperative_ratio: 0.2 } }),
     ];
     expect(computeContextObesity(events)).toBe(0);
   });

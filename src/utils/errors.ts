@@ -178,3 +178,15 @@ export class ApplyFailedError extends AiwrightError {
 
 // ConflictDetectedError — explicit alias matching TDD contract code E003
 export { FragmentConflictError as ConflictDetectedError };
+
+// CommandError — non-zero exit from a CLI command (exitCode: 1 default, 2 for validation failures)
+export class CommandError extends AiwrightError {
+  constructor(
+    message: string,
+    public readonly exitCode: 1 | 2 = 1,
+    suggestion?: string,
+  ) {
+    super(exitCode === 2 ? 'E004' : 'E009', message, suggestion);
+    this.name = 'CommandError';
+  }
+}

@@ -36,6 +36,19 @@ function makeEvents(recipe: string, scores: (number | undefined)[]): UsageEvent[
   return scores.map((s) => makeEvent(recipe, s));
 }
 
+/**
+ * 시간 윈도우 테스트용 헬퍼: now 기준 daysAgo일 전 타임스탬프를 가진 이벤트 생성
+ */
+function makeEventDaysAgo(
+  recipe: string,
+  score: number,
+  daysAgo: number,
+  now: Date,
+): UsageEvent {
+  const ts = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000).toISOString();
+  return makeEvent(recipe, score, { timestamp: ts });
+}
+
 describe('detectDrift — no events', () => {
   it('returns level none when no events exist', () => {
     const report = detectDrift([], 'default');
@@ -173,5 +186,78 @@ describe('detectDrift — events without score', () => {
     const events = [...scored, ...unscored];
     const report = detectDrift(events, 'default');
     expect(report.level).toBe('warning');
+  });
+});
+
+describe('detectDrift — time window based', () => {
+  it('triggers warning when 7-day average < 0.5 with at least 2 data points', () => {
+    const now = new Date();
+    const events = [
+      makeEventDaysAgo('default', 0.3, 2, now),
+      makeEventDaysAgo('default', 0.4, 5, now),
+    ];
+    const report = detectDrift(events, 'default', now);
+    expect(report.level).toBe('warning');
+    expect(report.time_window_triggered).toBe(true);
+    expect(report.window_days).toBe(7);
+    expect(report.window_avg).toBeDefined();
+    expect(report.window_avg!).toBeLessThan(0.5);
+  });
+
+  it('triggers adjustment when 14-day average < 0.4 with at least 3 data points', () => {
+    const now = new Date();
+    const events = [
+      makeEventDaysAgo('default', 0.2, 3, now),
+      makeEventDaysAgo('default', 0.3, 8, now),
+      makeEventDaysAgo('default', 0.35, 12, now),
+    ];
+    const report = detectDrift(events, 'default', now);
+    expect(report.level).toBe('adjustment');
+    expect(report.time_window_triggered).toBe(true);
+    expect(report.window_days).toBe(14);
+    expect(report.window_avg).toBeDefined();
+    expect(report.window_avg!).toBeLessThan(0.4);
+  });
+
+  it('triggers deactivation when 30-day average < 0.3 with at least 4 data points', () => {
+    const now = new Date();
+    const events = [
+      makeEventDaysAgo('default', 0.1, 5, now),
+      makeEventDaysAgo('default', 0.2, 10, now),
+      makeEventDaysAgo('default', 0.25, 20, now),
+      makeEventDaysAgo('default', 0.15, 28, now),
+    ];
+    const report = detectDrift(events, 'default', now);
+    expect(report.level).toBe('deactivation');
+    expect(report.time_window_triggered).toBe(true);
+    expect(report.window_days).toBe(30);
+    expect(report.window_avg).toBeDefined();
+    expect(report.window_avg!).toBeLessThan(0.3);
+  });
+
+  it('returns none when data count is below minimum threshold (insufficient data)', () => {
+    const now = new Date();
+    // 7일 내 1개만 존재 → 최소 2개 미달, window 트리거 없음
+    // 연속 횟수도 1개뿐이라 none
+    const events = [makeEventDaysAgo('default', 0.1, 3, now)];
+    const report = detectDrift(events, 'default', now);
+    expect(report.level).toBe('none');
+    expect(report.time_window_triggered).toBe(false);
+  });
+
+  it('selects higher level when both consecutive and time window are triggered', () => {
+    const now = new Date();
+    // 연속 횟수: 3회 연속 < 0.5 → warning
+    // 시간 윈도우: 14일 내 평균 < 0.4 → adjustment
+    // 최종: adjustment (더 높은 level)
+    const events = [
+      makeEventDaysAgo('default', 0.35, 2, now),
+      makeEventDaysAgo('default', 0.35, 5, now),
+      makeEventDaysAgo('default', 0.35, 10, now),
+    ];
+    const report = detectDrift(events, 'default', now);
+    // 14일 내 3개 평균 = 0.35 < 0.4 → adjustment via window
+    expect(report.level).toBe('adjustment');
+    expect(report.time_window_triggered).toBe(true);
   });
 });

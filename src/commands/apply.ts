@@ -16,7 +16,9 @@ import {
   RecipeNotFoundError,
   AiwrightError,
   ValidationError,
+  ApplyFailedError,
 } from '../utils/errors.js';
+import { computeDiff, formatDiff } from '../utils/diff.js';
 import { createHash, randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import { extractPromptMetrics } from '../intelligence/extract-metrics.js';
@@ -158,16 +160,17 @@ export function registerApplyCommand(program: Command): void {
             adapter = await detectAdapter(projectDir);
           }
 
-          // --diff: compare before applying
+          // --diff: compare before applying (unified diff 스타일)
           if (opts.diff) {
             const existing = await adapter.read(projectDir);
-            const existingText = existing?.fullText ?? '(none)';
+            const existingText = existing?.fullText ?? '';
             const newText = rendered.fullText;
 
-            console.log(chalk.bold.cyan('--- Current ---'));
-            console.log(existingText);
-            console.log(chalk.bold.cyan('--- New ---'));
-            console.log(newText);
+            const diffLines = computeDiff(existingText, newText);
+            const formatted = formatDiff(diffLines);
+
+            console.log(chalk.bold.cyan('--- Diff ---'));
+            console.log(formatted);
             console.log(chalk.bold.cyan('--- End Diff ---'));
           }
 
@@ -175,8 +178,7 @@ export function registerApplyCommand(program: Command): void {
           const result = await adapter.apply(rendered, projectDir);
 
           if (!result.success) {
-            console.error(chalk.red(`Error [E009]: ${result.message}`));
-            process.exit(1);
+            throw new ApplyFailedError(result.message ?? 'Adapter apply failed');
           }
 
           // 7a. Record usage event (비침습적, 실패해도 무시)
@@ -230,6 +232,7 @@ export function registerApplyCommand(program: Command): void {
             rendered.fullText,
             rendered.sections,
             lintResults,
+            config.judge,
           );
 
           // Phase 5b: Auto Profile Update (비침습적)
@@ -281,20 +284,7 @@ export function registerApplyCommand(program: Command): void {
             }
           }
         } catch (err) {
-          if (err instanceof AiwrightError) {
-            console.error(chalk.red(err.format()));
-            if (err.suggestion) {
-              console.error(chalk.dim(`  Suggestion: ${err.suggestion}`));
-            }
-            const isValidation = err.code === 'E004';
-            process.exit(isValidation ? 2 : 1);
-          }
-          if (err instanceof Error) {
-            console.error(chalk.red(`Error: ${err.message}`));
-          } else {
-            console.error(chalk.red('Unexpected error during apply'));
-          }
-          process.exit(1);
+          throw err;
         }
       },
     );
