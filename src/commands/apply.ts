@@ -24,6 +24,7 @@ import fs from 'node:fs/promises';
 import { extractPromptMetrics } from '../intelligence/extract-metrics.js';
 import { lintComposed } from '../intelligence/linter.js';
 import { recordUsageEvent, loadEvents, loadProfile, saveProfile } from '../intelligence/storage.js';
+import type { UserProfile } from '../schema/user-profile.js';
 import type { UsageEvent } from '../schema/usage-event.js';
 import { adaptFragments } from '../intelligence/adapt.js';
 import { addGitNote } from '../intelligence/git-trace.js';
@@ -130,7 +131,7 @@ export function registerApplyCommand(program: Command): void {
           const rendered = render(composed, recipe.vars ?? {}, config.vars ?? {});
 
           // 6a. Extract prompt metrics + lint (정적 분석)
-          const promptMetrics = extractPromptMetrics(rendered.fullText, rendered.sections);
+          const promptMetrics = extractPromptMetrics(rendered.fullText, rendered.sections, rendered.resolvedVars);
           const lintResults = lintComposed(rendered.fullText, rendered.sections, promptMetrics);
           const highWarnLints = lintResults.filter(
             (r) => r.severity === 'HIGH' || r.severity === 'WARN',
@@ -201,11 +202,10 @@ export function registerApplyCommand(program: Command): void {
 
           // 7b. Git note 태깅 (비침습적, 실패해도 무시)
           try {
-            const currentProfile = await loadProfile().catch(() => null);
             await addGitNote({
               recipe: recipeName,
               fragments: rendered.fragments,
-              dna_code: currentProfile?.dna_code,
+              dna_code: profile?.dna_code,
             });
           } catch {
             // git note 기록 실패는 apply 결과에 영향을 주지 않음
@@ -233,10 +233,11 @@ export function registerApplyCommand(program: Command): void {
             rendered.sections,
             lintResults,
             config.judge,
+            promptMetrics,
           );
 
           // Phase 5b: Auto Profile Update (비침습적)
-          let updatedProfile = await loadProfile().catch(() => null);
+          let updatedProfile: UserProfile | null = null;
           try {
             const events = await loadEvents().catch((): UsageEvent[] => []);
             events.push(currentEvent);
@@ -246,21 +247,21 @@ export function registerApplyCommand(program: Command): void {
             const behavior = computeBehavior(events);
             const growth = computeGrowth(events);
             const domains = aggregateDomains(events);
-            const existingProfile = await loadProfile().catch(() => null);
-            await saveProfile({
-              version: '1',
+            const newProfile = {
+              version: '1' as const,
               user_id: 'default',
               updated_at: new Date().toISOString(),
               style,
               dna_code: dnaCode,
               weaknesses,
               domains,
-              adaptive: existingProfile?.adaptive ?? { enabled: false, rules: [] },
+              adaptive: profile?.adaptive ?? { enabled: false, rules: [] },
               behavior,
               growth,
               total_events: events.length,
-            });
-            updatedProfile = await loadProfile().catch(() => null);
+            };
+            await saveProfile(newProfile);
+            updatedProfile = newProfile;
           } catch {
             // 프로파일 갱신 실패 무시
           }

@@ -3,6 +3,7 @@ import { judgePrompt, type JudgeOptions } from './llm-judge.js';
 import type { FragmentFile } from '../schema/fragment.js';
 import type { LintResult } from './linter.js';
 import type { JudgeConfig } from '../schema/config.js';
+import type { PromptMetrics } from '../schema/usage-event.js';
 
 export interface ScoreBundle {
   heuristic: number;
@@ -26,6 +27,7 @@ export async function computeAutoScore(
   sections: Map<string, string>,
   lintResults: LintResult[],
   judgeConfig?: JudgeConfig,
+  promptMetrics?: PromptMetrics,
 ): Promise<ScoreBundle> {
   // heuristic: 메트릭 평균
   const metrics = computeHeuristics(fragmentFiles);
@@ -40,19 +42,24 @@ export async function computeAutoScore(
   let judgeWeaknesses: string[] = [];
 
   try {
-    const judgeOptions: JudgeOptions | undefined = judgeConfig
-      ? {
-          mode: judgeConfig.mode,
-          model: judgeConfig.model,
-          provider: judgeConfig.provider,
-          apiKeyEnv: judgeConfig.api_key_env,
-          cache: judgeConfig.cache,
-          cacheTtlHours: judgeConfig.cache_ttl_hours,
-          timeoutMs: judgeConfig.timeout_ms,
-          dailyLimit: judgeConfig.daily_limit,
-          monthlyLimit: judgeConfig.monthly_limit,
-        }
-      : undefined;
+    const judgeOptions: JudgeOptions = {
+      ...(judgeConfig
+        ? {
+            mode: judgeConfig.mode,
+            model: judgeConfig.model,
+            provider: judgeConfig.provider,
+            apiKeyEnv: judgeConfig.api_key_env,
+            cache: judgeConfig.cache,
+            cacheTtlHours: judgeConfig.cache_ttl_hours,
+            timeoutMs: judgeConfig.timeout_ms,
+            dailyLimit: judgeConfig.daily_limit,
+            monthlyLimit: judgeConfig.monthly_limit,
+          }
+        : {}),
+      ...(promptMetrics
+        ? { precomputed: { sections, metrics: promptMetrics, lintResults } }
+        : {}),
+    };
     const judgeResult = await judgePrompt(fullText, judgeOptions);
     judge = judgeResult.score;
     model = judgeResult.model;

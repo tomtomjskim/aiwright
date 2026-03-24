@@ -9,6 +9,7 @@ import { type PromptMetrics } from '../schema/usage-event.js';
 export function extractPromptMetrics(
   fullText: string,
   sections: Map<string, string>,
+  resolvedVars?: Record<string, unknown>,
 ): PromptMetrics {
   const total_chars = fullText.length;
   const slot_count = sections.size;
@@ -25,9 +26,11 @@ export function extractPromptMetrics(
   // 렌더링 후에도 남아있는 {{...}} = 미채움 변수
   const allVarMatches = fullText.match(/\{\{[^{}]+\}\}/g) ?? [];
   const variable_count = allVarMatches.length;
-  // 렌더링 후 텍스트에 남은 {{...}}는 미채움 → variable_filled = 0 (잔류 기준)
-  // 렌더링 전 변수 개수를 알 수 없으므로 잔류=미채움, filled=0으로 산정
-  const variable_filled = 0;
+
+  // resolvedVars가 제공된 경우: 전체 변수 수 - 미채움 수 = 채워진 수
+  // 제공되지 않은 경우(heuristic judge 등): 미채움만 알 수 있으므로 0
+  const totalVarCount = resolvedVars !== undefined ? Object.keys(resolvedVars).length : variable_count;
+  const variable_filled = Math.max(0, totalVarCount - variable_count);
 
   // 문장 분리: 마침표/느낌표/물음표로 분리
   const sentences = fullText

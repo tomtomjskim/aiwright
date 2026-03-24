@@ -11,14 +11,14 @@ export interface ValidationWarning {
   message: string;
 }
 
-export interface ValidationError2 {
+export interface RecipeValidationIssue {
   type: 'conflict' | 'cycle' | 'missing_required_var';
   message: string;
 }
 
 export interface ValidationResult {
   valid: boolean;
-  errors: ValidationError2[];
+  errors: RecipeValidationIssue[];
   warnings: ValidationWarning[];
 }
 
@@ -32,7 +32,7 @@ export function validateRecipe(
   recipe: Recipe | { fragments: Array<{ fragment: string; vars?: Record<string, unknown>; enabled?: boolean }> },
   fragments: FragmentFile[],
 ): ValidationResult {
-  const errors: ValidationError2[] = [];
+  const errors: RecipeValidationIssue[] = [];
   const warnings: ValidationWarning[] = [];
 
   const fragmentMap = new Map<string, FragmentFile>(

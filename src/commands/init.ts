@@ -4,6 +4,7 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import yaml from 'js-yaml';
 import { fileExists, ensureDir, writeFileEnsure } from '../utils/fs.js';
+import { detectAdapter } from '../adapter/detect.js';
 
 const DEFAULT_CONFIG = {
   version: '1',
@@ -22,26 +23,6 @@ const DEFAULT_CONFIG = {
   },
 };
 
-async function detectAdapter(projectDir: string): Promise<string> {
-  const claudeDir = path.join(projectDir, '.claude');
-  const cursorrules = path.join(projectDir, '.cursorrules');
-
-  try {
-    await fs.access(claudeDir);
-    return 'claude-code';
-  } catch {
-    // not found
-  }
-
-  try {
-    await fs.access(cursorrules);
-    return 'cursor';
-  } catch {
-    // not found
-  }
-
-  return 'generic';
-}
 
 async function installSkills(projectDir: string): Promise<number> {
   const skillsDir = new URL('./boilerplate/claude-skills', import.meta.url).pathname;
@@ -121,7 +102,7 @@ export function registerInitCommand(program: Command): void {
         if (await fileExists(configPath)) {
           console.log(chalk.yellow('aiwright.config.yaml already exists. Skipping.'));
         } else {
-          const detectedAdapter = opts.adapter ?? (await detectAdapter(projectDir));
+          const detectedAdapter = opts.adapter ?? (await detectAdapter(projectDir)).name;
           const config = {
             ...DEFAULT_CONFIG,
             adapter: detectedAdapter,

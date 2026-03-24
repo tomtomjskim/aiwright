@@ -7,12 +7,13 @@
  * - hybrid: LLM 70% + heuristic 30% 블렌딩
  */
 
-import { lintComposed } from './linter.js';
+import { lintComposed, type LintResult } from './linter.js';
 import { extractPromptMetrics } from './extract-metrics.js';
 import { resolveProvider, resolveApiKey } from './providers/index.js';
 import { computeCacheKey, readCache, writeCache } from './judge-cache.js';
 import { checkBudget, recordCall } from './judge-budget.js';
 import { buildSystemPrompt, buildUserPrompt } from './judge-prompt-template.js';
+import type { PromptMetrics } from '../schema/usage-event.js';
 
 export interface JudgeResult {
   score: number;
@@ -20,6 +21,12 @@ export interface JudgeResult {
   strengths: string[];
   weaknesses: string[];
   model: string;
+}
+
+export interface JudgePrecomputed {
+  sections: Map<string, string>;
+  metrics: PromptMetrics;
+  lintResults: LintResult[];
 }
 
 export interface JudgeOptions {
@@ -33,6 +40,8 @@ export interface JudgeOptions {
   timeoutMs?: number;
   dailyLimit?: number;
   monthlyLimit?: number;
+  /** 이미 계산된 sections/metrics/lintResults 를 전달하면 heuristic 모드에서 재계산 생략 */
+  precomputed?: JudgePrecomputed;
 }
 
 /**
@@ -50,7 +59,7 @@ export async function judgePrompt(fullText: string, options?: JudgeOptions): Pro
     case 'hybrid':
       return hybridJudge(fullText, options!);
     default:
-      return heuristicJudge(fullText);
+      return heuristicJudge(fullText, options?.precomputed);
   }
 }
 
@@ -134,12 +143,15 @@ function buildFeedback(
  * Heuristic Judge — lint 결과와 메트릭 기반 점수 산출 (LLM 호출 없음)
  * 기존 judgePrompt() 본문에서 추출
  */
-async function heuristicJudge(fullText: string): Promise<JudgeResult> {
+async function heuristicJudge(
+  fullText: string,
+  precomputed?: JudgePrecomputed,
+): Promise<JudgeResult> {
   const model = 'heuristic-sim-v1';
 
-  const sections = parseSections(fullText);
-  const metrics = extractPromptMetrics(fullText, sections);
-  const lintResults = lintComposed(fullText, sections, metrics);
+  const sections = precomputed?.sections ?? parseSections(fullText);
+  const metrics = precomputed?.metrics ?? extractPromptMetrics(fullText, sections);
+  const lintResults = precomputed?.lintResults ?? lintComposed(fullText, sections, metrics);
 
   const highIssues = lintResults.filter((r) => r.severity === 'HIGH');
   const warnIssues = lintResults.filter((r) => r.severity === 'WARN');
@@ -294,7 +306,7 @@ export function dedup(items: string[]): string[] {
 async function hybridJudge(fullText: string, options: JudgeOptions): Promise<JudgeResult> {
   // llmJudge는 내부적으로 모든 에러를 catch하여 heuristic 폴백하므로 throw하지 않음
   const llmResult = await llmJudge(fullText, options);
-  const heuristicResult = await heuristicJudge(fullText);
+  const heuristicResult = await heuristicJudge(fullText, options.precomputed);
 
   const score = Math.round((llmResult.score * 0.7 + heuristicResult.score * 0.3) * 100) / 100;
 

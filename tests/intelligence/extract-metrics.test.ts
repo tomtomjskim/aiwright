@@ -70,12 +70,34 @@ describe('extractPromptMetrics — variable detection', () => {
     expect(result.variable_count).toBeGreaterThan(0);
   });
 
-  it('variable_filled is 0 when {{variables}} remain in rendered text', () => {
-    // After rendering, remaining {{...}} are unfilled variables → variable_filled = 0
+  it('variable_filled counts resolved vars minus unfilled when resolvedVars provided', () => {
+    // resolvedVars has 2 keys (name, role), but rendered text still has {{name}} unfilled → filled = 1
+    const text = 'Hello {{name}}, you are a {{role}}.';
+    const sections = new Map([['instruction', text]]);
+    // Simulate: {{role}} was filled (rendered away), {{name}} remains
+    const renderedText = 'Hello {{name}}, you are a engineer.';
+    const resolvedVars = { name: '{{name}}', role: 'engineer' };
+    const result = extractPromptMetrics(renderedText, sections, resolvedVars);
+    // totalVarCount=2, variable_count=1(unfilled) → variable_filled=1
+    expect(result.variable_filled).toBe(1);
+    expect(result.variable_count).toBe(1);
+  });
+
+  it('variable_filled is 0 when no resolvedVars and variables remain unfilled', () => {
     const text = 'Hello {{name}}, how are you?';
     const sections = new Map([['instruction', text]]);
     const result = extractPromptMetrics(text, sections);
     expect(result.variable_filled).toBe(0);
+  });
+
+  it('variable_filled equals resolvedVars count when all vars are filled (none remain)', () => {
+    // After full render, no {{...}} left → variable_count=0, filled = totalVarCount
+    const renderedText = 'Hello Alice, you are a developer.';
+    const sections = new Map([['instruction', renderedText]]);
+    const resolvedVars = { name: 'Alice', role: 'developer' };
+    const result = extractPromptMetrics(renderedText, sections, resolvedVars);
+    expect(result.variable_count).toBe(0);
+    expect(result.variable_filled).toBe(2);
   });
 
   it('slot_count reflects unique slots count (Map size)', () => {

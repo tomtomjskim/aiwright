@@ -146,19 +146,19 @@ export class SchemaValidationError extends AiwrightError {
   }
 }
 
-// AdapterNotFoundError — named adapter not registered
+// E011 — Adapter not found
 export class AdapterNotFoundError extends AiwrightError {
   constructor(message: string, suggestion?: string) {
-    super('E005', message, suggestion);
+    super('E011', message, suggestion);
     this.name = 'AdapterNotFoundError';
   }
 }
 
-// VariableMissingError — required Mustache variable not supplied
+// E012 — Required Mustache variable not supplied
 export class VariableMissingError extends AiwrightError {
   constructor(varName: string, fragmentName?: string) {
     super(
-      'E008',
+      'E012',
       fragmentName
         ? `Required variable "${varName}" is missing in fragment "${fragmentName}"`
         : `Required variable "${varName}" is missing`,
@@ -168,25 +168,25 @@ export class VariableMissingError extends AiwrightError {
   }
 }
 
-// ApplyFailedError — adapter apply operation failed
+// E013 — Adapter apply operation failed
 export class ApplyFailedError extends AiwrightError {
   constructor(message: string, suggestion?: string) {
-    super('E009', message, suggestion);
+    super('E013', message, suggestion);
     this.name = 'ApplyFailedError';
   }
 }
 
-// ConflictDetectedError — explicit alias matching TDD contract code E003
+// ConflictDetectedError — explicit alias matching TDD contract code E007
 export { FragmentConflictError as ConflictDetectedError };
 
-// CommandError — non-zero exit from a CLI command (exitCode: 1 default, 2 for validation failures)
+// CommandError — non-zero exit from a CLI command (exitCode: 1 → E014, exitCode: 2 → E004 validation failure)
 export class CommandError extends AiwrightError {
   constructor(
     message: string,
     public readonly exitCode: 1 | 2 = 1,
     suggestion?: string,
   ) {
-    super(exitCode === 2 ? 'E004' : 'E009', message, suggestion);
+    super(exitCode === 2 ? 'E004' : 'E014', message, suggestion);
     this.name = 'CommandError';
   }
 }
