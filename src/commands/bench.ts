@@ -55,9 +55,18 @@ function runAssertion(text: string, assertion: Assertion): { pass: boolean; reas
       return { pass, reason: pass ? 'OK' : `Expected length < ${assertion.value}, got ${text.length}` };
     }
     case 'regex': {
-      const re = new RegExp(String(assertion.value));
+      const pattern = String(assertion.value);
+      if (pattern.length > 200) {
+        return { pass: false, reason: `Regex pattern too long (${pattern.length} chars, max 200)` };
+      }
+      let re: RegExp;
+      try {
+        re = new RegExp(pattern);
+      } catch (err) {
+        return { pass: false, reason: `Invalid regex: ${err instanceof Error ? err.message : 'unknown'}` };
+      }
       const pass = re.test(text);
-      return { pass, reason: pass ? 'OK' : `Expected text to match regex /${assertion.value}/` };
+      return { pass, reason: pass ? 'OK' : `Expected text to match regex /${pattern}/` };
     }
     case 'format': {
       // format assertion: checks if the text loosely matches a format description (markdown/json/plain)

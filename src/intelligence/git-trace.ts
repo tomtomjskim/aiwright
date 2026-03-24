@@ -1,27 +1,19 @@
-import { exec } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
+
+const COMMIT_HASH_RE = /^[0-9a-f]{40}$/;
 
 /**
- * git이 사용 가능한지 확인
- */
-async function isGitAvailable(): Promise<boolean> {
-  try {
-    await execAsync('git rev-parse --git-dir', { timeout: 5000 });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * 현재 HEAD 커밋 해시 반환
+ * git이 사용 가능한지 + HEAD 커밋 해시를 단일 호출로 반환
+ * git 미사용 환경이면 null
  */
 async function getHeadCommit(): Promise<string | null> {
   try {
-    const { stdout } = await execAsync('git rev-parse HEAD', { timeout: 5000 });
-    return stdout.trim();
+    const { stdout } = await execFileAsync('git', ['rev-parse', 'HEAD'], { timeout: 5000 });
+    const hash = stdout.trim();
+    return COMMIT_HASH_RE.test(hash) ? hash : null;
   } catch {
     return null;
   }
@@ -38,8 +30,6 @@ export async function addGitNote(data: {
   score?: number;
 }): Promise<boolean> {
   try {
-    if (!(await isGitAvailable())) return false;
-
     const commit = await getHeadCommit();
     if (!commit) return false;
 
@@ -49,10 +39,9 @@ export async function addGitNote(data: {
     if (data.fragments.length > 0) parts.push(`fragments=${data.fragments.join(',')}`);
 
     const noteMessage = `aiwright: ${parts.join(' ')}`;
-    await execAsync(
-      `git notes --ref=aiwright add -f -m ${JSON.stringify(noteMessage)} ${commit}`,
-      { timeout: 10000 },
-    );
+    await execFileAsync('git', ['notes', '--ref=aiwright', 'add', '-f', '-m', noteMessage, commit], {
+      timeout: 10000,
+    });
     return true;
   } catch {
     return false;
@@ -73,10 +62,12 @@ interface GitNoteEntry {
  */
 export async function readGitNotes(count = 10): Promise<GitNoteEntry[]> {
   try {
-    if (!(await isGitAvailable())) return [];
+    const commit = await getHeadCommit();
+    if (!commit) return [];
 
-    const { stdout } = await execAsync(
-      `git log --show-notes=aiwright --format="%H%n%N---COMMIT_END---" -${count}`,
+    const { stdout } = await execFileAsync(
+      'git',
+      ['log', `--show-notes=aiwright`, `--format=%H%n%N---COMMIT_END---`, `-${count}`],
       { timeout: 10000 },
     );
 
