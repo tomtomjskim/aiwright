@@ -8,19 +8,19 @@ import { type PromptMetrics } from '../schema/usage-event.js';
  */
 export function extractPromptMetrics(
   fullText: string,
-  sections: Map<string, string>,
+  sections: Record<string, string>,
   resolvedVars?: Record<string, unknown>,
 ): PromptMetrics {
   const total_chars = fullText.length;
-  const slot_count = sections.size;
+  const slot_count = Object.keys(sections).length;
 
   const has_constraint =
-    sections.has('constraint') && (sections.get('constraint')?.trim().length ?? 0) > 0;
+    'constraint' in sections && (sections['constraint']?.trim().length ?? 0) > 0;
   const has_example =
-    sections.has('example') && (sections.get('example')?.trim().length ?? 0) > 0;
+    'example' in sections && (sections['example']?.trim().length ?? 0) > 0;
   const has_context =
-    sections.has('context') && (sections.get('context')?.trim().length ?? 0) > 0;
-  const context_chars = sections.get('context')?.length ?? 0;
+    'context' in sections && (sections['context']?.trim().length ?? 0) > 0;
+  const context_chars = sections['context']?.length ?? 0;
 
   // {{변수}} 패턴 분석
   // 렌더링 후에도 남아있는 {{...}} = 미채움 변수

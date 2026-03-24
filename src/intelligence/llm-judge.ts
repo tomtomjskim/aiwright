@@ -24,7 +24,7 @@ export interface JudgeResult {
 }
 
 export interface JudgePrecomputed {
-  sections: Map<string, string>;
+  sections: Record<string, string>;
   metrics: PromptMetrics;
   lintResults: LintResult[];
 }
@@ -67,8 +67,8 @@ export async function judgePrompt(fullText: string, options?: JudgeOptions): Pro
  * 전체 텍스트에서 섹션 맵 추출
  * [slot] ... 마커 또는 전체 텍스트를 단일 섹션으로 처리
  */
-function parseSections(fullText: string): Map<string, string> {
-  const sections = new Map<string, string>();
+function parseSections(fullText: string): Record<string, string> {
+  const sections: Record<string, string> = {};
 
   // [slot] 마커 패턴 시도
   const slotPattern = /\[(\w+)\]([\s\S]*?)(?=\[\w+\]|$)/g;
@@ -76,13 +76,13 @@ function parseSections(fullText: string): Map<string, string> {
   let found = false;
 
   while ((match = slotPattern.exec(fullText)) !== null) {
-    sections.set(match[1].toLowerCase(), match[2].trim());
+    sections[match[1].toLowerCase()] = match[2].trim();
     found = true;
   }
 
   if (!found) {
     // 마커 없을 때 전체를 instruction으로 처리
-    sections.set('instruction', fullText.trim());
+    sections['instruction'] = fullText.trim();
   }
 
   return sections;
@@ -168,7 +168,7 @@ async function heuristicJudge(
   // 강점 도출
   const strengths: string[] = [];
   if (metrics.has_constraint) strengths.push('Good constraint coverage');
-  if (sections.has('system') && (sections.get('system')?.trim().length ?? 0) > 0) {
+  if ('system' in sections && (sections['system']?.trim().length ?? 0) > 0) {
     strengths.push('Clear system role definition');
   }
   if (metrics.has_example) strengths.push('Includes few-shot examples');

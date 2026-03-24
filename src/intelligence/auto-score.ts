@@ -24,7 +24,7 @@ export interface ScoreBundle {
 export async function computeAutoScore(
   fragmentFiles: FragmentFile[],
   fullText: string,
-  sections: Map<string, string>,
+  sections: Record<string, string>,
   lintResults: LintResult[],
   judgeConfig?: JudgeConfig,
   promptMetrics?: PromptMetrics,

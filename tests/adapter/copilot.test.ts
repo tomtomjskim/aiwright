@@ -10,9 +10,7 @@ async function makeTmpDir(): Promise<string> {
 }
 
 function makePrompt(fullText: string): ComposedPrompt {
-  const sections = new Map<string, string>();
-  sections.set('full', fullText);
-  return { sections, fullText, fragments: ['test-frag'], resolvedVars: {} };
+  return { sections: { full: fullText }, fullText, fragments: ['test-frag'], resolvedVars: {} };
 }
 
 const TARGET = '.github/copilot-instructions.md';

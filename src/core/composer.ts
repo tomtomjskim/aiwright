@@ -48,7 +48,7 @@ export function compose(
   }
 
   // 섹션 구성
-  const sections = new Map<string, string>();
+  const sections: Record<string, string> = {};
   const orderedKeys = [
     ...SLOT_ORDER,
     // custom slot_name 추가
@@ -65,7 +65,7 @@ export function compose(
 
     const sectionParts = group.map((f) => f.body);
     const sectionText = sectionParts.join('\n\n');
-    sections.set(key, sectionText);
+    sections[key] = sectionText;
     parts.push(sectionText);
 
     for (const f of group) {

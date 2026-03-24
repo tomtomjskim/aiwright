@@ -7,15 +7,12 @@ function makeComposed(
   sections: Record<string, string> = {},
   resolvedVars: Record<string, unknown> = {}
 ): ComposedPrompt {
-  const sectionsMap = new Map<string, string>();
-  for (const [key, val] of Object.entries(sections)) {
-    sectionsMap.set(key, val);
-  }
-  if (!sectionsMap.has('full')) {
-    sectionsMap.set('full', fullText);
+  const sectionsRecord: Record<string, string> = { ...sections };
+  if (!('full' in sectionsRecord)) {
+    sectionsRecord['full'] = fullText;
   }
   return {
-    sections: sectionsMap,
+    sections: sectionsRecord,
     fullText,
     fragments: [],
     resolvedVars,
@@ -73,7 +70,7 @@ describe('render', () => {
       {}
     );
     const result = render(composed, { type: 'helpful', greeting: 'Hi' }, {});
-    expect(result.sections.get('system')).toBe('You are a helpful assistant.');
+    expect(result.sections['system']).toBe('You are a helpful assistant.');
     expect(result.fullText).toBe('Hi');
   });
 

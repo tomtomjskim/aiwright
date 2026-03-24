@@ -16,7 +16,7 @@ export interface LintResult {
  */
 export function lintComposed(
   fullText: string,
-  sections: Map<string, string>,
+  sections: Record<string, string>,
   metrics: PromptMetrics,
 ): LintResult[] {
   const results: LintResult[] = [];
@@ -54,7 +54,7 @@ export function lintComposed(
 
   // PS004: No Role — system slot 없음
   const hasSystem =
-    sections.has('system') && (sections.get('system')?.trim().length ?? 0) > 0;
+    'system' in sections && (sections['system']?.trim().length ?? 0) > 0;
   if (!hasSystem) {
     results.push({
       id: 'PS004',
@@ -98,7 +98,7 @@ export function lintComposed(
   }
 
   // PS008: Context Obesity — context chars / total > 0.6
-  const contextText = sections.get('context') ?? '';
+  const contextText = sections['context'] ?? '';
   if (metrics.total_chars > 0) {
     const contextRatio = contextText.length / metrics.total_chars;
     if (contextRatio > 0.6) {
@@ -112,7 +112,7 @@ export function lintComposed(
   }
 
   // PS009: Contradicting Constraints — "always X"와 "never X" 동일 대상 감지
-  const constraintText = sections.get('constraint') ?? '';
+  const constraintText = sections['constraint'] ?? '';
   if (constraintText.length > 0) {
     const alwaysMatches = [...constraintText.matchAll(/always\s+(\w+)/gi)].map((m) =>
       m[1].toLowerCase(),

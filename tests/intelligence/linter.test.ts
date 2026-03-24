@@ -18,24 +18,21 @@ function makeMetrics(overrides: Partial<PromptMetrics> = {}): PromptMetrics {
   };
 }
 
-function getSections(overrides: Record<string, string> = {}): Map<string, string> {
+function getSections(overrides: Record<string, string> = {}): Record<string, string> {
   const base: Record<string, string> = {
     system: 'You are a helpful assistant.',
     instruction: 'Do the task carefully.',
     constraint: 'Never output harmful content.',
     ...overrides,
   };
-  return new Map(Object.entries(base));
+  return base;
 }
 
 const defaultFullText = 'You are a helpful assistant. Do the task carefully. Never output harmful content.';
 
 describe('PS001 — Missing Constraint (HIGH)', () => {
   it('reports PS001 HIGH when no constraint slot is present', () => {
-    const sections = new Map([
-      ['system', 'You are an AI.'],
-      ['instruction', 'Do the task.'],
-    ]);
+    const sections = { system: 'You are an AI.', instruction: 'Do the task.' };
     const metrics = makeMetrics({ has_constraint: false, total_chars: 27 });
     const results: LintResult[] = lintComposed('You are an AI. Do the task.', sections, metrics);
     const ps001 = results.find((r) => r.id === 'PS001');
@@ -55,7 +52,7 @@ describe('PS001 — Missing Constraint (HIGH)', () => {
 describe('PS002 — Too Short (WARN)', () => {
   it('reports PS002 WARN when fullText is less than 100 chars', () => {
     const shortText = 'Short.';
-    const sections = new Map([['instruction', shortText]]);
+    const sections = { instruction: shortText };
     const metrics = makeMetrics({ total_chars: shortText.length, has_constraint: false });
     const results = lintComposed(shortText, sections, metrics);
     const ps002 = results.find((r) => r.id === 'PS002');
@@ -96,10 +93,7 @@ describe('PS003 — Too Long (WARN)', () => {
 
 describe('PS004 — No Role / No System Slot (WARN)', () => {
   it('reports PS004 WARN when system slot is absent', () => {
-    const sections = new Map([
-      ['instruction', 'Do the task carefully and precisely.'],
-      ['constraint', 'Never output harmful content.'],
-    ]);
+    const sections = { instruction: 'Do the task carefully and precisely.', constraint: 'Never output harmful content.' };
     const metrics = makeMetrics({ total_chars: 65 });
     const results = lintComposed(
       'Do the task carefully and precisely. Never output harmful content.',
@@ -165,12 +159,7 @@ describe('PS008 — Context Obesity (WARN)', () => {
   it('reports PS008 WARN when context chars exceed 60% of total', () => {
     const contextHeavy = 'C'.repeat(700);
     const rest = 'R'.repeat(300);
-    const sections = new Map([
-      ['context', contextHeavy],
-      ['instruction', rest],
-      ['constraint', 'Never skip steps.'],
-      ['system', 'You are an AI.'],
-    ]);
+    const sections = { context: contextHeavy, instruction: rest, constraint: 'Never skip steps.', system: 'You are an AI.' };
     const fullText = contextHeavy + rest + 'Never skip steps. You are an AI.';
     const metrics = makeMetrics({ total_chars: fullText.length, has_context: true });
     const results = lintComposed(fullText, sections, metrics);
@@ -182,12 +171,7 @@ describe('PS008 — Context Obesity (WARN)', () => {
   it('does NOT report PS008 when context chars are <= 60% of total', () => {
     const contextText = 'C'.repeat(300);
     const rest = 'R'.repeat(700);
-    const sections = new Map([
-      ['context', contextText],
-      ['instruction', rest],
-      ['constraint', 'Never skip.'],
-      ['system', 'You are an AI.'],
-    ]);
+    const sections = { context: contextText, instruction: rest, constraint: 'Never skip.', system: 'You are an AI.' };
     const fullText = contextText + rest;
     const metrics = makeMetrics({ total_chars: fullText.length, has_context: true });
     const results = lintComposed(fullText, sections, metrics);
@@ -208,11 +192,7 @@ describe('lintComposed — all rules pass', () => {
     // - low context ratio (PS008 pass)
     const imperativeText =
       'Do the task. Always verify. Never skip. Check output. Write tests. Confirm results. Validate data.';
-    const sections = new Map([
-      ['system', 'You are a helpful assistant.'],
-      ['instruction', imperativeText],
-      ['constraint', 'Never output harmful content. Always verify results.'],
-    ]);
+    const sections = { system: 'You are a helpful assistant.', instruction: imperativeText, constraint: 'Never output harmful content. Always verify results.' };
     const fullText = 'You are a helpful assistant. ' + imperativeText + ' Never output harmful content. Always verify results.';
     const metrics = makeMetrics({
       total_chars: fullText.length,
@@ -230,7 +210,7 @@ describe('lintComposed — all rules pass', () => {
 
 describe('lintComposed — result shape', () => {
   it('each LintResult has id, name, severity, and message fields', () => {
-    const sections = new Map([['instruction', 'Short.']]);
+    const sections = { instruction: 'Short.' };
     const metrics = makeMetrics({ total_chars: 6, has_constraint: false });
     const results = lintComposed('Short.', sections, metrics);
     for (const r of results) {

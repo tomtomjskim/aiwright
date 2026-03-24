@@ -45,10 +45,10 @@ describe('compose', () => {
       makeFragment('constraint', 'constraint', 50, 'Constraint text'),
     ];
     const result = compose(fragments);
-    expect(result.sections.has('system')).toBe(true);
-    expect(result.sections.has('instruction')).toBe(true);
-    expect(result.sections.has('constraint')).toBe(true);
-    expect(result.sections.get('system')).toBe('System text');
+    expect('system' in result.sections).toBe(true);
+    expect('instruction' in result.sections).toBe(true);
+    expect('constraint' in result.sections).toBe(true);
+    expect(result.sections['system']).toBe('System text');
   });
 
   it('sorts fragments within a slot by priority (ascending)', () => {
@@ -58,7 +58,7 @@ describe('compose', () => {
       makeFragment('mid-priority', 'instruction', 50, 'Mid priority.'),
     ];
     const result = compose(fragments);
-    const instructionSection = result.sections.get('instruction')!;
+    const instructionSection = result.sections['instruction']!;
     const highIdx = instructionSection.indexOf('High priority.');
     const midIdx = instructionSection.indexOf('Mid priority.');
     const lowIdx = instructionSection.indexOf('Low priority.');
@@ -83,7 +83,7 @@ describe('compose', () => {
       makeFragment('inst-b', 'instruction', 20, 'Second instruction.'),
     ];
     const result = compose(fragments);
-    expect(result.sections.get('instruction')).toBe('First instruction.\n\nSecond instruction.');
+    expect(result.sections['instruction']).toBe('First instruction.\n\nSecond instruction.');
   });
 
   it('filters fragments by enabledNames set when provided', () => {
@@ -147,7 +147,7 @@ describe('compose', () => {
       slot_name: 'my-custom-slot',
     });
     const result = compose([frag]);
-    expect(result.sections.has('my-custom-slot')).toBe(true);
-    expect(result.sections.get('my-custom-slot')).toBe('Custom body');
+    expect('my-custom-slot' in result.sections).toBe(true);
+    expect(result.sections['my-custom-slot']).toBe('Custom body');
   });
 });

@@ -59,7 +59,7 @@ export class WindsurfAdapter implements AdapterContract {
     const promptText = headerEnd !== -1 ? content.slice(headerEnd + 2).trim() : content.trim();
 
     return {
-      sections: new Map([['full', promptText]]),
+      sections: { full: promptText },
       fullText: promptText,
       fragments: [],
       resolvedVars: {},

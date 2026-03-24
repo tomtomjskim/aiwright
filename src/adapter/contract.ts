@@ -1,5 +1,5 @@
 export interface ComposedPrompt {
-  sections: Map<string, string>;
+  sections: Record<string, string>;
   fullText: string;
   fragments: string[];
   resolvedVars: Record<string, unknown>;

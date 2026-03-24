@@ -102,8 +102,13 @@ function makeProfile(overrides: Partial<UserProfile> = {}): UserProfile {
   };
 }
 
+/** YYYY-MM → tmpDir/.aiwright/events/YYYY-MM.ndjson */
 function eventsFilePath(date: string): string {
-  // YYYY-MM → tmpDir/.aiwright/events/YYYY-MM.yaml
+  return path.join(tmpDir, '.aiwright', 'events', `${date}.ndjson`);
+}
+
+/** YYYY-MM → tmpDir/.aiwright/events/YYYY-MM.yaml (하위호환 테스트용) */
+function eventsFilePathYaml(date: string): string {
   return path.join(tmpDir, '.aiwright', 'events', `${date}.yaml`);
 }
 
@@ -128,6 +133,17 @@ describe('recordUsageEvent — 정상 기록 후 파일 존재 확인', () => {
     const raw = await fs.readFile(eventsFilePath('2025-06'), 'utf-8');
     expect(raw).toContain('aaaaaaaa-0000-0000-0000-000000000001');
   });
+
+  it('파일이 유효한 NDJSON 형식이다 (줄 단위 JSON)', async () => {
+    const event = makeEvent({ timestamp: '2025-06-15T10:00:00.000Z' });
+    await recordUsageEvent(event);
+
+    const raw = await fs.readFile(eventsFilePath('2025-06'), 'utf-8');
+    const lines = raw.split('\n').filter((l) => l.trim());
+    expect(lines).toHaveLength(1);
+    const parsed = JSON.parse(lines[0]);
+    expect(parsed.event_id).toBe(event.event_id);
+  });
 });
 
 describe('recordUsageEvent — 같은 월에 2번 기록 시 append', () => {
@@ -145,9 +161,8 @@ describe('recordUsageEvent — 같은 월에 2번 기록 시 append', () => {
     await recordUsageEvent(event2);
 
     const raw = await fs.readFile(eventsFilePath('2025-06'), 'utf-8');
-    const parsed = yaml.load(raw) as unknown[];
-    expect(Array.isArray(parsed)).toBe(true);
-    expect(parsed).toHaveLength(2);
+    const lines = raw.split('\n').filter((l) => l.trim());
+    expect(lines).toHaveLength(2);
   });
 
   it('두 event_id 모두 파일에 포함된다', async () => {
@@ -198,7 +213,7 @@ describe('loadEvents — 빈 디렉토리 → 빈 배열', () => {
 });
 
 describe('loadEvents — 파싱 실패 파일 → 빈 배열 (에러 없이)', () => {
-  it('깨진 YAML 파일이 있어도 예외 없이 빈 배열을 반환한다', async () => {
+  it('깨진 NDJSON 파일이 있어도 예외 없이 빈 배열을 반환한다', async () => {
     const eventsDir = path.join(tmpDir, '.aiwright', 'events');
     await fs.mkdir(eventsDir, { recursive: true });
 
@@ -206,13 +221,73 @@ describe('loadEvents — 파싱 실패 파일 → 빈 배열 (에러 없이)', (
     const now = new Date();
     const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     await fs.writeFile(
-      path.join(eventsDir, `${monthKey}.yaml`),
-      '{ invalid yaml: [[[',
+      path.join(eventsDir, `${monthKey}.ndjson`),
+      '{ invalid json: [[[',
       'utf-8',
     );
 
     const events = await loadEvents(3);
     expect(events).toEqual([]);
+  });
+});
+
+// ─── loadEvents — 하위호환 (.yaml 파일 읽기) ──────────────────────────────────
+
+describe('loadEvents — 하위호환 (.yaml 파일 읽기)', () => {
+  it('기존 .yaml 파일도 정상적으로 로드된다', async () => {
+    const now = new Date();
+    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const eventsDir = path.join(tmpDir, '.aiwright', 'events');
+    await fs.mkdir(eventsDir, { recursive: true });
+
+    const event = makeEvent({
+      event_id: 'eeeeeeee-0000-0000-0000-000000000001',
+      timestamp: now.toISOString(),
+    });
+
+    // 기존 yaml 형식으로 파일 작성
+    await fs.writeFile(
+      path.join(eventsDir, `${monthKey}.yaml`),
+      yaml.dump([event]),
+      'utf-8',
+    );
+
+    const events = await loadEvents(3);
+    expect(events).toHaveLength(1);
+    expect(events[0].event_id).toBe('eeeeeeee-0000-0000-0000-000000000001');
+  });
+
+  it('.ndjson이 있으면 .yaml을 무시한다', async () => {
+    const now = new Date();
+    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const eventsDir = path.join(tmpDir, '.aiwright', 'events');
+    await fs.mkdir(eventsDir, { recursive: true });
+
+    const yamlEvent = makeEvent({
+      event_id: 'ffffffff-0000-0000-0000-000000000001',
+      timestamp: now.toISOString(),
+    });
+    const ndjsonEvent = makeEvent({
+      event_id: 'ffffffff-0000-0000-0000-000000000002',
+      timestamp: now.toISOString(),
+    });
+
+    // yaml 파일 (무시 대상)
+    await fs.writeFile(
+      path.join(eventsDir, `${monthKey}.yaml`),
+      yaml.dump([yamlEvent]),
+      'utf-8',
+    );
+    // ndjson 파일 (우선 대상)
+    await fs.writeFile(
+      path.join(eventsDir, `${monthKey}.ndjson`),
+      JSON.stringify(ndjsonEvent) + '\n',
+      'utf-8',
+    );
+
+    const events = await loadEvents(3);
+    expect(events).toHaveLength(1);
+    expect(events[0].event_id).toBe('ffffffff-0000-0000-0000-000000000002');
   });
 });
 
@@ -273,8 +348,8 @@ describe('loadEvents — 월 경계값 (1월 기준 N=3 탐색)', () => {
         timestamp: `${monthKey}-15T10:00:00.000Z`,
       });
       await fs.writeFile(
-        path.join(eventsDir, `${monthKey}.yaml`),
-        yaml.dump([event]),
+        path.join(eventsDir, `${monthKey}.ndjson`),
+        JSON.stringify(event) + '\n',
         'utf-8',
       );
     }
@@ -296,7 +371,7 @@ describe('loadEvents — 월 경계값 (1월 기준 N=3 탐색)', () => {
 
     // 세 파일 모두 존재하는지 확인
     for (const monthKey of targetFiles) {
-      expect(existsSync(path.join(eventsDir, `${monthKey}.yaml`))).toBe(true);
+      expect(existsSync(path.join(eventsDir, `${monthKey}.ndjson`))).toBe(true);
     }
   });
 });

@@ -21,9 +21,9 @@ export function render(
   Mustache.escape = (text: string) => text;
   const renderText = (text: string) => Mustache.render(text, mergedVars);
 
-  const newSections = new Map<string, string>();
-  for (const [key, val] of composed.sections.entries()) {
-    newSections.set(key, renderText(val));
+  const newSections: Record<string, string> = {};
+  for (const [key, val] of Object.entries(composed.sections)) {
+    newSections[key] = renderText(val);
   }
 
   const result: ComposedPrompt = {
