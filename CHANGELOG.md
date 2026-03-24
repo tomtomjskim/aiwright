@@ -15,6 +15,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Daily/monthly budget management with cost estimation
   - Automatic heuristic fallback on API failure, missing key, or budget exceeded
   - Judge configuration via `aiwright.config.yaml` judge section
+- **`--format json` option**: Added to `score`, `bench`, and `status` commands for machine-readable output
+- **`add --force` flag**: Overwrite existing fragment without error
+- **Error codes E011–E014**: `AdapterNotFound`, `VariableMissing`, `ApplyFailed`, `CommandError` — all unique, no collisions
+
+### Changed
+- `ComposedPrompt.sections`: `Map` → `Record<string, string>` for JSON serialization compatibility
+- `storage.ts`: Full YAML re-serialization replaced with NDJSON append-only log (`.yaml` backward-compatible)
+- `intelligence` command: string `switch` replaced with Commander formal subcommands (enables `--help` per subcommand)
+- `RecipeSchema` `fragments`: `min(1)` → `min(0)` to prevent apply errors immediately after `init`
+- `recordScore`: unified to options-object call signature
+- `ValidationError2` renamed to `RecipeValidationIssue` for clarity
+- `init.ts` `detectAdapter`: duplicate logic removed; consolidated into `adapter/detect.ts`
+
+### Fixed
+- **Security — `git-trace.ts`**: `exec()` replaced with `execFile()` + commit SHA validated against `/^[0-9a-f]{40}$/` to prevent shell injection
+- **Security — `bench.ts`**: `RegExp` pattern length capped at 200 characters + wrapped in `try/catch` to prevent ReDoS
+- **Security — `renderer.ts`**: `Mustache.escape` process-global override removed; escape scope restored to individual `render()` calls only
+- `loadProfile()`: triple call deduplicated to single load with result reuse
+- `heuristicJudge`: duplicate metric computation eliminated via `JudgePrecomputed` injection
+- `variable_filled` metric: hardcoded `0` replaced with actual count derived from `resolvedVars`
+
+### Tests
+- Test suite expanded: 42 files / 641 cases → 50 files / 758+ cases
+- Statement coverage: 56% → 70%+
 
 ## [1.0.0] - 2026-03-23
 

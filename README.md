@@ -9,7 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-green.svg)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg)](https://typescriptlang.org)
-[![Tests](https://img.shields.io/badge/Tests-523%20passed-brightgreen.svg)](#testing)
+[![Tests](https://img.shields.io/badge/Tests-758%2B%20passed-brightgreen.svg)](#testing)
 
 [Quick Start](#-quick-start) &#8226;
 [Architecture](#-architecture) &#8226;
@@ -565,7 +565,7 @@ Built on research from leading AI labs:
 ## Testing
 
 ```
-42 test files · 641 test cases · all passing
+50 test files · 758+ test cases · all passing · coverage 70%+
 ```
 
 ```bash

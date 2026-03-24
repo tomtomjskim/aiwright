@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { RecipeSchema } from './recipe.js';
+import { RecipeSchema, RecipeEntrySchema } from './recipe.js';
 
 export const JudgeConfigSchema = z.object({
   mode: z.enum(['heuristic', 'llm', 'hybrid']).default('heuristic'),
@@ -24,7 +24,14 @@ export const ProjectConfigSchema = z.object({
       local: z.string().default('.aiwright/fragments'),
     })
     .default({}),
-  recipes: z.record(z.string(), RecipeSchema.omit({ name: true })).default({}),
+  recipes: z
+    .record(
+      z.string(),
+      RecipeSchema.omit({ name: true }).extend({
+        fragments: z.array(RecipeEntrySchema).default([]),
+      }),
+    )
+    .default({}),
   hooks: z
     .object({
       auto_score: z.boolean().default(true),

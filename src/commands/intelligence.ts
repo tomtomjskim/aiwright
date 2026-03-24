@@ -611,30 +611,152 @@ async function runEvolve(recipeName: string): Promise<void> {
 // ---- register ----
 
 export function registerIntelligenceCommand(program: Command): void {
-  program
-    .command('intelligence <subcommand> [target]')
-    .description('User intelligence: analyze, profile, skill-tree, kata, export, team-sync, team, reset, drift, judge, optimize, evolve')
-    .option('--force', 'Skip confirmation (reset)')
-    .action(async (subcommand: string, target: string | undefined, opts: { force?: boolean }) => {
+  const intelligence = program
+    .command('intelligence')
+    .description('User intelligence: analyze, profile, skill-tree, kata, export, team-sync, team, reset, drift, judge, optimize, evolve');
+
+  intelligence
+    .command('analyze')
+    .description('Analyze usage events and build intelligence profile')
+    .action(async () => {
+      try {
+        await runAnalyze();
+      } catch (err) {
+        console.error(chalk.red(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`));
+        process.exit(1);
+      }
+    });
+
+  intelligence
+    .command('profile')
+    .description('Show current intelligence profile')
+    .action(async () => {
+      try {
+        await runProfile();
+      } catch (err) {
+        console.error(chalk.red(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`));
+        process.exit(1);
+      }
+    });
+
+  intelligence
+    .command('skill-tree')
+    .description('Render skill tree based on profile')
+    .action(async () => {
+      try {
+        await runSkillTree();
+      } catch (err) {
+        console.error(chalk.red(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`));
+        process.exit(1);
+      }
+    });
+
+  intelligence
+    .command('kata')
+    .description('Generate a kata challenge based on weaknesses')
+    .action(async () => {
+      try {
+        await runKata();
+      } catch (err) {
+        console.error(chalk.red(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`));
+        process.exit(1);
+      }
+    });
+
+  intelligence
+    .command('export')
+    .description('Export profile for team sharing')
+    .action(async () => {
       const projectDir = process.cwd();
       try {
-        switch (subcommand) {
-          case 'analyze': await runAnalyze(); break;
-          case 'profile': await runProfile(); break;
-          case 'skill-tree': await runSkillTree(); break;
-          case 'kata': await runKata(); break;
-          case 'export': await runExport(projectDir); break;
-          case 'team-sync': await runTeamSync(projectDir); break;
-          case 'team': await runTeam(projectDir); break;
-          case 'reset': await runReset(opts.force ?? false); break;
-          case 'drift': await runDrift(target ?? 'default'); break;
-          case 'judge': await runJudge(target ?? 'default'); break;
-          case 'optimize': await runOptimize(target ?? 'default'); break;
-          case 'evolve': await runEvolve(target ?? 'default'); break;
-          default:
-            console.error(chalk.red(`Unknown subcommand "${subcommand}". Available: analyze, profile, skill-tree, kata, export, team-sync, team, reset, drift, judge, optimize, evolve`));
-            process.exit(1);
-        }
+        await runExport(projectDir);
+      } catch (err) {
+        console.error(chalk.red(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`));
+        process.exit(1);
+      }
+    });
+
+  intelligence
+    .command('team-sync')
+    .description('Sync and display team profiles from .aiwright/team/')
+    .action(async () => {
+      const projectDir = process.cwd();
+      try {
+        await runTeamSync(projectDir);
+      } catch (err) {
+        console.error(chalk.red(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`));
+        process.exit(1);
+      }
+    });
+
+  intelligence
+    .command('team')
+    .description('Show team dashboard')
+    .action(async () => {
+      const projectDir = process.cwd();
+      try {
+        await runTeam(projectDir);
+      } catch (err) {
+        console.error(chalk.red(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`));
+        process.exit(1);
+      }
+    });
+
+  intelligence
+    .command('reset')
+    .description('Delete all intelligence data')
+    .option('--force', 'Skip confirmation')
+    .action(async (opts: { force?: boolean }) => {
+      try {
+        await runReset(opts.force ?? false);
+      } catch (err) {
+        console.error(chalk.red(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`));
+        process.exit(1);
+      }
+    });
+
+  intelligence
+    .command('drift [recipe]')
+    .description('Detect score drift for a recipe')
+    .action(async (recipe: string | undefined) => {
+      try {
+        await runDrift(recipe ?? 'default');
+      } catch (err) {
+        console.error(chalk.red(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`));
+        process.exit(1);
+      }
+    });
+
+  intelligence
+    .command('judge [recipe]')
+    .description('Run LLM-as-judge evaluation for a recipe')
+    .action(async (recipe: string | undefined) => {
+      try {
+        await runJudge(recipe ?? 'default');
+      } catch (err) {
+        console.error(chalk.red(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`));
+        process.exit(1);
+      }
+    });
+
+  intelligence
+    .command('optimize [recipe]')
+    .description('Optimize fragment combination for a recipe')
+    .action(async (recipe: string | undefined) => {
+      try {
+        await runOptimize(recipe ?? 'default');
+      } catch (err) {
+        console.error(chalk.red(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`));
+        process.exit(1);
+      }
+    });
+
+  intelligence
+    .command('evolve [recipe]')
+    .description("Generate evolution suggestions for a recipe's fragments")
+    .action(async (recipe: string | undefined) => {
+      try {
+        await runEvolve(recipe ?? 'default');
       } catch (err) {
         console.error(chalk.red(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`));
         process.exit(1);

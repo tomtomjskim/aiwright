@@ -166,4 +166,78 @@ describe('status command', () => {
     const allOutput = consoleLogSpy.mock.calls.map((c) => c[0] as string).join('\n');
     expect(allOutput).toContain('No significant weaknesses');
   });
+
+  describe('--format json', () => {
+    it('outputs valid JSON with config/events/drift/profile keys', async () => {
+      vi.mocked(loadProfile).mockResolvedValue(makeProfile());
+
+      await runStatus(['--format', 'json']);
+
+      const raw = consoleLogSpy.mock.calls[0][0] as string;
+      const parsed = JSON.parse(raw) as {
+        config: { dna_code: string; total_events: number; updated_at: string };
+        events: number;
+        drift: null;
+        profile: { style: object; weaknesses: unknown[]; behavior: null };
+      };
+      expect(parsed.config.dna_code).toBe('AW-S9E0I1');
+      expect(parsed.config.total_events).toBe(12);
+      expect(parsed.events).toBe(0);
+      expect(parsed.drift).toBeNull();
+      expect(Array.isArray(parsed.profile.weaknesses)).toBe(true);
+    });
+
+    it('includes drift info in JSON when events exist', async () => {
+      vi.mocked(loadProfile).mockResolvedValue(makeProfile());
+      vi.mocked(loadEvents).mockResolvedValue([
+        {
+          event_id: 'evt-1',
+          event_type: 'apply',
+          timestamp: new Date().toISOString(),
+          recipe: 'default',
+          fragments: [],
+          adapter: 'claude-code',
+          domain_tags: [],
+          prompt_metrics: {
+            total_chars: 500,
+            section_count: 3,
+            has_system: true,
+            has_context: false,
+            has_constraint: true,
+            has_example: false,
+            variable_count: 0,
+            variable_filled: 0,
+            imperative_ratio: 0.5,
+          },
+        },
+      ]);
+
+      await runStatus(['--format', 'json']);
+
+      const raw = consoleLogSpy.mock.calls[0][0] as string;
+      const parsed = JSON.parse(raw) as { events: number; drift: { level: string; trend: string; message: string } | null };
+      expect(parsed.events).toBe(1);
+      expect(parsed.drift).not.toBeNull();
+      expect(typeof parsed.drift?.level).toBe('string');
+    });
+
+    it('outputs JSON error message when no profile exists', async () => {
+      vi.mocked(loadProfile).mockResolvedValue(null);
+
+      await runStatus(['--format', 'json']);
+
+      const raw = consoleLogSpy.mock.calls[0][0] as string;
+      const parsed = JSON.parse(raw) as { error: string };
+      expect(parsed.error).toContain('No profile found');
+    });
+
+    it('does not output chalk separator lines in JSON mode', async () => {
+      vi.mocked(loadProfile).mockResolvedValue(makeProfile());
+
+      await runStatus(['--format', 'json']);
+
+      const allOutput = consoleLogSpy.mock.calls.map((c) => c[0] as string).join('\n');
+      expect(allOutput).not.toContain('═');
+    });
+  });
 });

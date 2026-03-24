@@ -51,17 +51,47 @@ export function registerStatusCommand(program: Command): void {
   program
     .command('status')
     .description('Show profile, weaknesses, and drift summary')
-    .action(async () => {
+    .option('--format <format>', 'Output format: text or json', 'text')
+    .action(async (opts: { format?: string }) => {
       try {
         const profile = await loadProfile();
+        const isJson = opts.format === 'json';
 
         if (!profile) {
-          console.log(chalk.yellow('No profile found.'));
-          console.log(chalk.dim('  Run `aiwright apply` first'));
+          if (isJson) {
+            console.log(JSON.stringify({ error: 'No profile found. Run `aiwright apply` first.' }, null, 2));
+          } else {
+            console.log(chalk.yellow('No profile found.'));
+            console.log(chalk.dim('  Run `aiwright apply` first'));
+          }
           return;
         }
 
         const events = await loadEvents().catch(() => []);
+
+        if (isJson) {
+          let drift: ReturnType<typeof detectDrift> | null = null;
+          if (events.length > 0) {
+            drift = detectDrift(events, 'default');
+          }
+          console.log(JSON.stringify({
+            config: {
+              dna_code: profile.dna_code ?? null,
+              total_events: profile.total_events,
+              updated_at: profile.updated_at,
+            },
+            events: events.length,
+            drift: drift
+              ? { level: drift.level, trend: drift.trend, message: drift.message }
+              : null,
+            profile: {
+              style: profile.style,
+              weaknesses: profile.weaknesses,
+              behavior: profile.behavior ?? null,
+            },
+          }, null, 2));
+          return;
+        }
 
         console.log(chalk.dim('═'.repeat(43)));
         console.log(

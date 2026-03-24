@@ -49,7 +49,9 @@ export function registerScoreCommand(program: Command): void {
     .option('--set <value>', 'Record a score (0.0 - 1.0)')
     .option('--note <text>', 'Optional note to attach to the score')
     .option('--trend', 'Show ASCII trend chart')
-    .action(async (name: string, opts: { set?: string; note?: string; trend?: boolean }) => {
+    .option('--format <format>', 'Output format: text or json', 'text')
+    .action(async (name: string, opts: { set?: string; note?: string; trend?: boolean; format?: string }) => {
+      const isJson = opts.format === 'json';
       try {
         if (opts.set !== undefined) {
           const value = parseFloat(opts.set);
@@ -61,12 +63,21 @@ export function registerScoreCommand(program: Command): void {
             );
           }
 
-          const result = await recordScore(name, value, opts.note);
+          const result = await recordScore({ name, value, note: opts.note });
 
-          console.log(chalk.green('✔') + ` Recorded score for ${chalk.bold(name)}`);
-          console.log(chalk.dim(`  value: ${value}  timestamp: ${result.timestamp}`));
-          if (opts.note) {
-            console.log(chalk.dim(`  note: ${opts.note}`));
+          if (isJson) {
+            console.log(JSON.stringify({
+              recorded: true,
+              name,
+              value: result.overall,
+              timestamp: result.timestamp,
+            }, null, 2));
+          } else {
+            console.log(chalk.green('✔') + ` Recorded score for ${chalk.bold(name)}`);
+            console.log(chalk.dim(`  value: ${value}  timestamp: ${result.timestamp}`));
+            if (opts.note) {
+              console.log(chalk.dim(`  note: ${opts.note}`));
+            }
           }
 
           // Record usage event (비침습적, 실패해도 무시)
@@ -118,6 +129,18 @@ export function registerScoreCommand(program: Command): void {
 
         // Default: list history
         const history = await readHistory(name);
+
+        if (isJson) {
+          const output = history.map((entry) => ({
+            name: entry.fragment_or_recipe,
+            value: entry.overall,
+            timestamp: entry.timestamp,
+            note: entry.metrics[0]?.rationale ?? null,
+            adapter: entry.adapter ?? null,
+          }));
+          console.log(JSON.stringify(output, null, 2));
+          return;
+        }
 
         if (history.length === 0) {
           console.log(chalk.yellow(`No score history for "${name}"`));

@@ -39,7 +39,8 @@ export function registerAddCommand(program: Command): void {
   program
     .command('add <name>')
     .description('Add a fragment to .aiwright/fragments/')
-    .action(async (name: string) => {
+    .option('--force', 'Overwrite if fragment already exists')
+    .action(async (name: string, opts: { force?: boolean }) => {
       const projectDir = process.cwd();
       const targetDir = path.join(projectDir, '.aiwright', 'fragments');
       const targetPath = path.join(targetDir, `${path.basename(name, '.md')}.md`);
@@ -76,9 +77,12 @@ export function registerAddCommand(program: Command): void {
         await ensureDir(targetDir);
 
         if (await fileExists(targetPath)) {
-          console.log(chalk.yellow(`Fragment "${path.basename(targetPath, '.md')}" already exists at ${targetPath}`));
-          console.log(chalk.dim('  Use --force to overwrite (not yet implemented)'));
-          process.exit(0);
+          if (!opts.force) {
+            console.log(chalk.yellow(`Fragment "${path.basename(targetPath, '.md')}" already exists at ${targetPath}`));
+            console.log(chalk.dim('  Use --force to overwrite'));
+            process.exit(0);
+          }
+          console.log(chalk.dim(`Overwriting existing fragment "${path.basename(targetPath, '.md')}"`));
         }
 
         const content = await fs.readFile(sourcePath, 'utf-8');

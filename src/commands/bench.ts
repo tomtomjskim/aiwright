@@ -93,7 +93,8 @@ export function registerBenchCommand(program: Command): void {
     .description('Benchmark a recipe against test cases')
     .requiredOption('--cases <path>', 'Path to cases YAML file')
     .option('--save', 'Save benchmark results to scoring history')
-    .action(async (recipeName: string, opts: { cases: string; save?: boolean }) => {
+    .option('--format <format>', 'Output format: text or json', 'text')
+    .action(async (recipeName: string, opts: { cases: string; save?: boolean; format?: string }) => {
       const projectDir = process.cwd();
       const configPath = path.join(projectDir, 'aiwright.config.yaml');
 
@@ -166,12 +167,27 @@ export function registerBenchCommand(program: Command): void {
         const composed = compose(fragmentFiles, enabledNames);
         const rendered = render(composed, recipe.vars ?? {}, config.vars ?? {});
 
-        console.log(chalk.bold(`\nBench: ${recipeName}`));
-        console.log(chalk.dim(`Cases: ${casesPath}`));
-        console.log(chalk.dim('─'.repeat(60)));
+        const isJson = opts.format === 'json';
+
+        interface AssertionResult {
+          type: string;
+          pass: boolean;
+          reason: string;
+        }
+        interface CaseResult {
+          case: string;
+          assertions: AssertionResult[];
+        }
 
         let totalAssertions = 0;
         let passedAssertions = 0;
+        const caseResults: CaseResult[] = [];
+
+        if (!isJson) {
+          console.log(chalk.bold(`\nBench: ${recipeName}`));
+          console.log(chalk.dim(`Cases: ${casesPath}`));
+          console.log(chalk.dim('─'.repeat(60)));
+        }
 
         for (const testCase of cases) {
           // Render with case-level vars (input)
@@ -183,33 +199,49 @@ export function registerBenchCommand(program: Command): void {
 
           const caseTotal = testCase.assertions.length;
           const casePassed: number[] = [];
+          const assertionResults: AssertionResult[] = [];
 
           for (let i = 0; i < testCase.assertions.length; i++) {
             const assertion = testCase.assertions[i];
             const { pass, reason } = runAssertion(caseRendered.fullText, assertion);
             totalAssertions++;
+            assertionResults.push({ type: assertion.type, pass, reason });
             if (pass) {
               passedAssertions++;
               casePassed.push(i);
-            } else {
+            } else if (!isJson) {
               console.log(
                 `  ${chalk.red('FAIL')} [${testCase.name}] assertion #${i + 1} (${assertion.type}): ${chalk.dim(reason)}`
               );
             }
           }
 
-          const allPass = casePassed.length === caseTotal;
-          const icon = allPass ? chalk.green('PASS') : chalk.red('FAIL');
-          console.log(`${icon} ${chalk.bold(testCase.name)} (${casePassed.length}/${caseTotal})`);
+          caseResults.push({ case: testCase.name, assertions: assertionResults });
+
+          if (!isJson) {
+            const allPass = casePassed.length === caseTotal;
+            const icon = allPass ? chalk.green('PASS') : chalk.red('FAIL');
+            console.log(`${icon} ${chalk.bold(testCase.name)} (${casePassed.length}/${caseTotal})`);
+          }
         }
 
-        console.log(chalk.dim('─'.repeat(60)));
         const passRate = totalAssertions > 0 ? passedAssertions / totalAssertions : 1;
-        const pct = (passRate * 100).toFixed(1);
-        const passColor = passRate === 1 ? chalk.green : passRate >= 0.8 ? chalk.yellow : chalk.red;
-        console.log(
-          `Overall: ${passColor(`${pct}%`)} (${passedAssertions}/${totalAssertions} assertions passed)`
-        );
+
+        if (isJson) {
+          console.log(JSON.stringify({
+            passRate,
+            passed: passedAssertions,
+            total: totalAssertions,
+            results: caseResults,
+          }, null, 2));
+        } else {
+          const pct = (passRate * 100).toFixed(1);
+          const passColor = passRate === 1 ? chalk.green : passRate >= 0.8 ? chalk.yellow : chalk.red;
+          console.log(chalk.dim('─'.repeat(60)));
+          console.log(
+            `Overall: ${passColor(`${pct}%`)} (${passedAssertions}/${totalAssertions} assertions passed)`
+          );
+        }
 
         // --save
         if (opts.save) {
@@ -228,7 +260,9 @@ export function registerBenchCommand(program: Command): void {
           });
 
           await appendHistory(recipeName, scoreResult);
-          console.log(chalk.dim(`\nSaved bench result to .aiwright/scores/${recipeName}.yaml`));
+          if (!isJson) {
+            console.log(chalk.dim(`\nSaved bench result to .aiwright/scores/${recipeName}.yaml`));
+          }
         }
 
         // Exit with error if not all passed

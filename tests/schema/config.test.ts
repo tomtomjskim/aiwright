@@ -71,6 +71,33 @@ describe('ProjectConfigSchema', () => {
     expect(result.recipes['my-recipe'].description).toBe('A recipe');
   });
 
+  it('accepts inline recipe with empty fragments array (init DEFAULT_CONFIG compat)', () => {
+    const result = ProjectConfigSchema.parse({
+      ...validConfig,
+      recipes: {
+        default: {
+          description: 'Default recipe',
+          adapter: 'generic',
+          fragments: [],
+          vars: {},
+        },
+      },
+    });
+    expect(result.recipes['default'].fragments).toEqual([]);
+  });
+
+  it('applies default fragments=[] when fragments key is omitted in a recipe', () => {
+    const result = ProjectConfigSchema.parse({
+      ...validConfig,
+      recipes: {
+        default: {
+          description: 'Default recipe',
+        },
+      },
+    });
+    expect(result.recipes['default'].fragments).toEqual([]);
+  });
+
   describe('judge field', () => {
     it('applies default judge config when judge key is absent', () => {
       const result = ProjectConfigSchema.parse(validConfig);
