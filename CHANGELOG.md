@@ -37,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `variable_filled` metric: hardcoded `0` replaced with actual count derived from `resolvedVars`
 
 ### Tests
-- Test suite expanded: 42 files / 641 cases → 50 files / 758+ cases
+- Test suite expanded: 42 files / 641 cases → 50 files / 795 cases
 - Statement coverage: 56% → 70%+
 
 ## [1.0.0] - 2026-03-23

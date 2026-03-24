@@ -58,7 +58,8 @@ export class ConfigNotFoundError extends AiwrightError {
   }
 }
 
-// E004 — Validation error
+// E004 — Validation error (의도적으로 SchemaValidationError, CommandError(exitCode=2)와 공유.
+//   모두 "입력 유효성 검증 실패"를 나타내며 CLI에서 exit code 2로 처리됨)
 export class ValidationError extends AiwrightError {
   constructor(message: string, suggestion?: string) {
     super('E004', message, suggestion);
