@@ -1,5 +1,6 @@
 import path from 'node:path';
 import os from 'node:os';
+import { fileURLToPath } from 'node:url';
 import { fileExists, listFiles } from '../utils/fs.js';
 import { FragmentNotFoundError } from '../utils/errors.js';
 
@@ -24,7 +25,7 @@ function defaultGlobalDir(): string {
 
 function defaultBuiltinsDir(): string {
   // dist/builtins (빌드 후) 또는 src/builtins (직접 실행)
-  return new URL('./builtins', import.meta.url).pathname;
+  return fileURLToPath(new URL('./builtins', import.meta.url));
 }
 
 /**
