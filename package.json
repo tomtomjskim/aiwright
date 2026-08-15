@@ -4,11 +4,11 @@
   "description": "AI Usage Intelligence Framework — profile, diagnose, and improve how you use AI",
   "type": "module",
   "bin": {
-    "aiwright": "./dist/cli.mjs"
+    "aiwright": "./dist/cli.js"
   },
   "exports": {
     ".": {
-      "import": "./dist/index.mjs",
+      "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     }
   },
@@ -21,6 +21,7 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "test": "vitest run",
+    "test:dist": "npm run build && node tests/distribution-check.mjs",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "lint": "tsc --noEmit",
@@ -55,9 +56,14 @@
     "chalk": "^5.4.1",
     "commander": "^13.1.0",
     "gray-matter": "^4.0.3",
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^4.3.1",
     "mustache": "^4.2.0",
     "zod": "^3.24.4"
+  },
+  "overrides": {
+    "gray-matter": {
+      "js-yaml": "^3.15.1"
+    }
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
