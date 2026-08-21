@@ -56,6 +56,7 @@ Do not preserve `AIQ` merely for backward conceptual compatibility if it weakens
 1. [PRD v0.1](./prd-v0.1.md) — problem, users, scope, requirements, metrics and policy.
 2. [Benchmark](./benchmark.md) — adjacent open-source systems, reusable patterns and differentiation.
 3. [Delivery roadmap](./roadmap.md) — gated phases, architecture direction, repository layout and validation plan.
+4. [Adversarial review](./adversarial-review.md) — critical protocol gaps, accepted findings and implementation blockers.
 
 ## Proposed decision
 
@@ -71,7 +72,10 @@ Adopt the following working split:
 This RFC should not trigger implementation until the following decisions are accepted:
 
 - task, run, session, turn, artifact, outcome, evaluation, and intervention boundaries;
-- content-capture modes and retention rules;
+- instruction layers, context provenance, context snapshots, and model visibility;
+- evidence scope, validator identity, independence, revision, and coverage;
+- explicit, provisional, and missing task-contract behavior;
+- content-capture modes, retention rules, and residual redaction risk;
 - individual versus team visibility rules;
 - MVP task class and outcome verification method;
 - separate repository decision;
@@ -79,4 +83,4 @@ This RFC should not trigger implementation until the following decisions are acc
 
 ## Current recommendation
 
-Proceed with a **local-first Codex pilot**, not a multi-tenant dashboard. The pilot must prove that AIwright can reconstruct a task, identify evidence-backed friction, and improve a later comparable task without creating noise or leaking content. Only then should the hosted team platform be built.
+Proceed with **Protocol v0.1, evidence-model, threat-model, and pilot EVAL_PLAN design**, followed by a local-first Codex pilot. Do not start with a dashboard or multi-tenant service. The pilot must prove that AIwright can reconstruct a task, distinguish model-visible context from runtime evidence, identify trustworthy friction, and improve a later comparable task without creating noise or leaking content.
