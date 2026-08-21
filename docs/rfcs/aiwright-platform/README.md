@@ -38,6 +38,19 @@ TOM Dev Forge                autonomous development control-plane consumer/integ
 
 The temporary location of this RFC inside `aiwright` is intentional. It lets the product boundary be reviewed without expanding the public CLI implementation prematurely.
 
+## Compatibility note: existing AIQ/team-dashboard concept
+
+The current public README includes an illustrative team capability dashboard with named individual `AIQ` scores. That concept conflicts with this RFC's evidence-first and anti-surveillance policy if interpreted as a management ranking feature.
+
+For the platform direction, treat that illustration as **legacy vision copy, not an accepted requirement**. A later documentation/product decision should either remove it or replace it with:
+
+- private, multidimensional personal guidance;
+- evaluator confidence and evidence instead of one opaque score;
+- aggregated workflow/task-class findings for team views;
+- explicit policy and audited access for any individual-level sharing.
+
+Do not preserve `AIQ` merely for backward conceptual compatibility if it weakens trust or encourages invalid employee comparisons.
+
 ## RFC documents
 
 1. [PRD v0.1](./prd-v0.1.md) — problem, users, scope, requirements, metrics and policy.
