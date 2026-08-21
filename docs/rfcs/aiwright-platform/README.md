@@ -57,12 +57,13 @@ Read in this order:
 2. [PRD v0.2 amendment](./prd-v0.2-amendment.md) — adds artifact governance, authorization, prompt-injection, egress, monitoring, and incident requirements. It takes precedence where it conflicts with v0.1.
 3. [Planning/design artifact architecture](./artifact-architecture.md) — artifact taxonomy, manifest, lifecycle, authority, context eligibility, dependency graph, and readiness gates.
 4. [Security architecture and control plane](./security-architecture.md) — trust zones, identity, permissions, Tool/MCP controls, injection/taint, secrets, egress, monitoring, alerts, containment, and security testing.
-5. [Delivery roadmap](./roadmap.md) — evidence-gated phases, repository direction, local pilot, hosted-service gate, and backlog.
-6. [Adjacent-system benchmark](./benchmark.md) — reusable patterns and product differentiation.
-7. [Product adversarial review](./adversarial-review.md) — product/protocol/evaluation blockers.
-8. [Security adversarial review](./security-adversarial-review.md) — security failure modes, accepted controls, open blockers, and phase priority.
+5. [Security control matrix](./security-control-matrix.md) — stable control IDs, enforcement points, permission/action risk, security events, failure modes, phase gates, and verification tests.
+6. [Delivery roadmap](./roadmap.md) — evidence-gated phases, repository direction, local pilot, hosted-service gate, and backlog.
+7. [Adjacent-system benchmark](./benchmark.md) — reusable patterns and product differentiation.
+8. [Product adversarial review](./adversarial-review.md) — product/protocol/evaluation blockers.
+9. [Security adversarial review](./security-adversarial-review.md) — security failure modes, accepted controls, open blockers, and phase priority.
 
-The artifact and security documents are not optional appendices. They amend the architecture and implementation gates.
+The artifact, security, and control-matrix documents are not optional appendices. They amend the architecture and implementation gates.
 
 ## Planning/design artifact principle
 
