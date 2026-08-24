@@ -1,0 +1,384 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:aiwright:protocol:0.1:authorization",
+  "title": "AIwright Protocol v0.1 Authorization Objects",
+  "oneOf": [
+    { "$ref": "#/$defs/PermissionRequest" },
+    { "$ref": "#/$defs/PolicyDecision" },
+    { "$ref": "#/$defs/ApprovalReceipt" },
+    { "$ref": "#/$defs/PermissionGrant" },
+    { "$ref": "#/$defs/PermissionRevocation" }
+  ],
+  "$defs": {
+    "ActionResource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "resource", "purpose", "environment"],
+      "properties": {
+        "action": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 192,
+          "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"
+        },
+        "resource": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "purpose": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "environment": {
+          "type": "string",
+          "enum": ["fixture", "sandbox", "development", "test", "staging", "production", "unknown"]
+        },
+        "important_arguments": {
+          "type": "object",
+          "additionalProperties": true,
+          "maxProperties": 128
+        },
+        "external_destinations": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 2048 }
+        },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "PermissionRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "object_type",
+        "permission_request_id",
+        "scope",
+        "principal",
+        "action_resource",
+        "data_classification",
+        "taint",
+        "risk_tier",
+        "requested_effect",
+        "requested_at",
+        "requested_until",
+        "source",
+        "reversibility"
+      ],
+      "properties": {
+        "schema_version": { "type": "string", "const": "0.1.0" },
+        "object_type": { "type": "string", "const": "permission_request" },
+        "permission_request_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "scope": { "$ref": "common.schema.json#/$defs/Scope" },
+        "principal": { "$ref": "common.schema.json#/$defs/ActorRef" },
+        "delegated_by_actor_id": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "parent_grant_id": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "action_resource": { "$ref": "#/$defs/ActionResource" },
+        "data_classification": { "$ref": "common.schema.json#/$defs/Classification" },
+        "taint": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Taint" }
+        },
+        "risk_tier": { "$ref": "common.schema.json#/$defs/RiskTier" },
+        "requested_effect": { "$ref": "common.schema.json#/$defs/EffectLimits" },
+        "requested_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+        "requested_until": { "$ref": "common.schema.json#/$defs/Timestamp" },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source_event_id", "tool_or_adapter", "request_hash"],
+          "properties": {
+            "source_event_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+            "tool_or_adapter": { "type": "string", "minLength": 1, "maxLength": 256 },
+            "tool_manifest_revision": { "type": ["string", "null"], "maxLength": 512 },
+            "request_hash": { "$ref": "common.schema.json#/$defs/Hash" },
+            "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+          }
+        },
+        "reversibility": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["reversible", "rollback_ref"],
+          "properties": {
+            "reversible": { "type": "boolean" },
+            "rollback_ref": { "type": ["string", "null"], "maxLength": 2048 },
+            "staging_available": { "type": ["boolean", "null"] },
+            "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+          }
+        },
+        "context_snapshot_id": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "plan_artifact_revision_id": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "PolicyDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "object_type",
+        "policy_decision_id",
+        "permission_request_id",
+        "decision",
+        "risk_tier",
+        "policy_version",
+        "rule_results",
+        "obligations",
+        "control_health",
+        "reason_codes",
+        "decided_at",
+        "decided_by_actor_id"
+      ],
+      "properties": {
+        "schema_version": { "type": "string", "const": "0.1.0" },
+        "object_type": { "type": "string", "const": "policy_decision" },
+        "policy_decision_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "permission_request_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "decision": {
+          "type": "string",
+          "enum": [
+            "allow",
+            "deny",
+            "require_user_confirmation",
+            "require_security_approval",
+            "require_dual_approval",
+            "restricted_mode"
+          ]
+        },
+        "risk_tier": { "$ref": "common.schema.json#/$defs/RiskTier" },
+        "policy_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "rule_results": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/RuleResult" },
+          "maxItems": 512
+        },
+        "obligations": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "audit",
+              "redact",
+              "sandbox",
+              "network_disabled",
+              "destination_allowlist",
+              "diff_preview",
+              "dry_run",
+              "transaction_summary",
+              "step_up_authentication",
+              "dual_control",
+              "rate_limit",
+              "effect_limit",
+              "restricted_mode",
+              "notify_user",
+              "notify_security_owner",
+              "preserve_evidence"
+            ]
+          }
+        },
+        "control_health": {
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/ControlHealth" },
+          "maxItems": 256
+        },
+        "reason_codes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 128 }
+        },
+        "evidence_refs": { "$ref": "common.schema.json#/$defs/EvidenceRefList" },
+        "decided_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+        "decided_by_actor_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "expires_at": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/Timestamp" },
+            { "type": "null" }
+          ]
+        },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "RuleResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rule_id", "rule_version", "result"],
+      "properties": {
+        "rule_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "rule_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "result": { "type": "string", "enum": ["allow", "deny", "not_applicable", "error"] },
+        "reason_code": { "type": ["string", "null"], "maxLength": 128 },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "ApprovalReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "object_type",
+        "approval_id",
+        "permission_request_id",
+        "policy_decision_id",
+        "decision",
+        "approver_actor_id",
+        "approver_role",
+        "authentication_strength",
+        "transaction_summary",
+        "approved_effect",
+        "warnings",
+        "decided_at"
+      ],
+      "properties": {
+        "schema_version": { "type": "string", "const": "0.1.0" },
+        "object_type": { "type": "string", "const": "approval_receipt" },
+        "approval_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "permission_request_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "policy_decision_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "decision": { "type": "string", "enum": ["approve", "deny", "cancel", "expire"] },
+        "approver_actor_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "approver_role": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "authentication_strength": {
+          "type": "string",
+          "enum": ["session", "reauthenticated", "step_up", "hardware_backed", "dual_control", "unknown"]
+        },
+        "transaction_summary": { "$ref": "#/$defs/TransactionSummary" },
+        "approved_effect": { "$ref": "common.schema.json#/$defs/EffectLimits" },
+        "warnings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Warning" },
+          "maxItems": 128
+        },
+        "decided_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+        "expires_at": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/Timestamp" },
+            { "type": "null" }
+          ]
+        },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "TransactionSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "resource",
+        "important_arguments",
+        "data_leaving_boundary",
+        "destinations",
+        "reversible",
+        "reason_for_task"
+      ],
+      "properties": {
+        "action": { "type": "string", "minLength": 3, "maxLength": 192 },
+        "resource": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "important_arguments": { "type": "object", "additionalProperties": true, "maxProperties": 128 },
+        "data_leaving_boundary": { "$ref": "common.schema.json#/$defs/Classification" },
+        "destinations": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 2048 }
+        },
+        "reversible": { "type": "boolean" },
+        "rollback_ref": { "type": ["string", "null"], "maxLength": 2048 },
+        "reason_for_task": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "Warning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["warning_type", "severity", "message"],
+      "properties": {
+        "warning_type": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "severity": { "$ref": "common.schema.json#/$defs/SecuritySeverity" },
+        "message": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "evidence_refs": { "$ref": "common.schema.json#/$defs/EvidenceRefList" },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "PermissionGrant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "object_type",
+        "permission_grant_id",
+        "permission_request_id",
+        "policy_decision_id",
+        "principal_actor_id",
+        "scope",
+        "action_resource",
+        "risk_tier",
+        "effect_limits",
+        "issued_at",
+        "not_before",
+        "expires_at",
+        "revocation_sensitive",
+        "transitive",
+        "status"
+      ],
+      "properties": {
+        "schema_version": { "type": "string", "const": "0.1.0" },
+        "object_type": { "type": "string", "const": "permission_grant" },
+        "permission_grant_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "permission_request_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "policy_decision_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "approval_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Identifier" }
+        },
+        "principal_actor_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "delegated_by_actor_id": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "parent_grant_id": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "scope": { "$ref": "common.schema.json#/$defs/Scope" },
+        "action_resource": { "$ref": "#/$defs/ActionResource" },
+        "risk_tier": { "$ref": "common.schema.json#/$defs/RiskTier" },
+        "effect_limits": { "$ref": "common.schema.json#/$defs/EffectLimits" },
+        "obligations": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 128 }
+        },
+        "issued_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+        "not_before": { "$ref": "common.schema.json#/$defs/Timestamp" },
+        "expires_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+        "revocation_sensitive": { "type": "boolean" },
+        "transitive": { "type": "boolean", "const": false },
+        "status": { "type": "string", "enum": ["active", "expired", "revoked", "consumed", "suspended"] },
+        "use_count": { "type": "integer", "minimum": 0 },
+        "max_use_count": { "type": ["integer", "null"], "minimum": 1 },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "PermissionRevocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "object_type",
+        "revocation_id",
+        "permission_grant_id",
+        "revoked_by_actor_id",
+        "revoked_at",
+        "reason_code",
+        "terminate_active_calls"
+      ],
+      "properties": {
+        "schema_version": { "type": "string", "const": "0.1.0" },
+        "object_type": { "type": "string", "const": "permission_revocation" },
+        "revocation_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "permission_grant_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "revoked_by_actor_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "revoked_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+        "reason_code": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "terminate_active_calls": { "type": "boolean" },
+        "security_event_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Identifier" }
+        },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    }
+  }
+}
