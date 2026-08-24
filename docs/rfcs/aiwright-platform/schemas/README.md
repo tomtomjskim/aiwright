@@ -9,22 +9,26 @@
 | Schema | Root type | Purpose |
 |---|---|---|
 | `common.schema.json` | Shared `$defs` | IDs, scope, actor, source, privacy, content, classification, risk, integrity |
-| `event-envelope.schema.json` | `EventEnvelope` | Append-only normalized observation envelope |
+| `event-envelope.schema.json` | `EventEnvelope` | Append-only normalized observation envelope with bounded indexed metadata |
 | `task-contract.schema.json` | Task object union | Explicit/provisional/missing task contract and task-session association |
+| `delegation-record.schema.json` | `DelegationRecord` | Parent/child actor handoff, context/artifact scope, permission subset check, lifecycle, and revocation |
 | `artifact-manifest.schema.json` | `ArtifactManifest` | Governed artifact identity, immutable revision, provenance, authority, context policy, and relations |
 | `context-snapshot.schema.json` | `ContextSnapshot` | Exact context sources, authority, visibility, taint, ordering, provider decision, and compaction lineage |
 | `evidence-record.schema.json` | `EvidenceRecord` | Claim/evidence scope, revision, validator, independence, coverage, result, and limitations |
 | `authorization.schema.json` | Authorization object union | Permission request, policy decision, approval receipt, permission grant, revocation |
-| `security-event.schema.json` | `SecurityEvent` | Detection, policy decision, evidence references, response actions, control health, and disposition |
+| `security-event.schema.json` | `SecurityEvent` | Detection, policy decision, evidence references, response actions, control health, privacy-aware previews, and disposition |
 | `incident-record.schema.json` | `IncidentRecord` | Correlated events, affected resources, containment, transitions, recovery gates, and residual risk |
+| `projection-manifest.schema.json` | `ProjectionManifest` | Source event ranges, reducer and policy versions, deterministic output hashes, completeness, and observation gaps |
 
 ## Validation rules
 
 - All schemas use `additionalProperties: false` for normative objects.
 - Provider- or domain-specific fields belong in an explicit `extensions` object with namespaced keys.
+- Indexed event metadata is limited to bounded scalar values or bounded arrays. Structured or large provider payloads belong in content references, not indexes.
 - Content bodies are not embedded by default. Schemas use content pointers, hashes, or approved external references.
 - Null is permitted only where the protocol explicitly allows an unknown or local-mode boundary.
 - A schema-valid object is not automatically trustworthy or authorized. Provenance, policy, lifecycle, and evidence gates still apply.
+- Semantic constraints such as grant subset, timestamp ordering, absolute denies, revision equivalence, and effect classification require deterministic policy/conformance tests.
 
 ## Repository validation
 
@@ -67,8 +71,8 @@ security rule version
 1. Validate source-adapter output against `event-envelope.schema.json`.
 2. Persist raw envelopes append-only.
 3. Validate governed projections against the relevant object schema.
-4. Record schema and reducer versions on every projection.
-5. Run positive, negative, partial-stream, tamper, privacy, and replay fixtures.
+4. Record exact source ranges, observation gaps, schema, mapping, reducer, and policy versions in `projection-manifest.schema.json`.
+5. Run positive, negative, partial-stream, tamper, privacy, replay, delegation, and control-failure fixtures.
 
 ## Known limitations
 
