@@ -1,0 +1,229 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:aiwright:protocol:0.1:task-contract",
+  "title": "AIwright Protocol v0.1 Task Contract Objects",
+  "oneOf": [
+    { "$ref": "#/$defs/TaskContract" },
+    { "$ref": "#/$defs/TaskSessionAssociation" }
+  ],
+  "$defs": {
+    "TaskContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "object_type",
+        "task_id",
+        "revision",
+        "contract_state",
+        "intent",
+        "task_type",
+        "expected_artifact_types",
+        "acceptance_criteria",
+        "risk_band",
+        "privacy_mode",
+        "owner_actor_id",
+        "source_artifact_refs",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "schema_version": { "type": "string", "const": "0.1.0" },
+        "object_type": { "type": "string", "const": "task_contract" },
+        "task_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "revision": { "type": "integer", "minimum": 1 },
+        "contract_state": {
+          "type": "string",
+          "enum": ["explicit", "provisional", "missing"]
+        },
+        "intent": { "type": ["string", "null"], "maxLength": 8192 },
+        "task_type": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "task_subtype": { "type": ["string", "null"], "maxLength": 128 },
+        "expected_artifact_types": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 128 }
+        },
+        "acceptance_criteria": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/AcceptanceCriterion" },
+          "maxItems": 256
+        },
+        "risk_band": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical", "unknown"]
+        },
+        "complexity_band": {
+          "type": "string",
+          "enum": ["small", "medium", "large", "unknown"]
+        },
+        "privacy_mode": { "$ref": "common.schema.json#/$defs/ContentMode" },
+        "owner_actor_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "participant_actor_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Identifier" }
+        },
+        "source_artifact_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Identifier" }
+        },
+        "parent_task_id": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "root_task_id": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "supersedes_task_revision": { "type": ["integer", "null"], "minimum": 1 },
+        "budget": { "$ref": "#/$defs/TaskBudget" },
+        "comparison_profile": { "$ref": "#/$defs/ComparisonProfile" },
+        "created_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+        "updated_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+        "confirmed_at": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/Timestamp" },
+            { "type": "null" }
+          ]
+        },
+        "confirmed_by_actor_id": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "contract_state": { "const": "explicit" } },
+            "required": ["contract_state"]
+          },
+          "then": {
+            "required": ["confirmed_at", "confirmed_by_actor_id"],
+            "properties": {
+              "intent": { "type": "string", "minLength": 1, "maxLength": 8192 }
+            }
+          }
+        }
+      ]
+    },
+    "AcceptanceCriterion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["criterion_id", "statement", "status"],
+      "properties": {
+        "criterion_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "statement": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "status": {
+          "type": "string",
+          "enum": ["proposed", "confirmed", "changed", "removed"]
+        },
+        "expected_validator_types": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 128 }
+        },
+        "source_artifact_ref": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "TaskBudget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_turns": { "type": ["integer", "null"], "minimum": 1 },
+        "max_runs": { "type": ["integer", "null"], "minimum": 1 },
+        "max_tool_calls": { "type": ["integer", "null"], "minimum": 0 },
+        "max_runtime_seconds": { "type": ["integer", "null"], "minimum": 1 },
+        "max_cost_usd": { "type": ["number", "null"], "minimum": 0 },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "ComparisonProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "project_familiarity": {
+          "type": "string",
+          "enum": ["new", "limited", "established", "expert", "unknown"]
+        },
+        "context_availability": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "unknown"]
+        },
+        "validator_strength_target": {
+          "type": "string",
+          "enum": ["E0_CLAIM", "E1_OPERATIONAL", "E2_SCOPED_AUTOMATED", "E3_INDEPENDENT", "E4_FIELD_OUTCOME"]
+        },
+        "model_configuration_ref": { "type": ["string", "null"], "maxLength": 2048 },
+        "tool_configuration_ref": { "type": ["string", "null"], "maxLength": 2048 },
+        "excluded_time_categories": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["user_interruption", "external_block", "approval_wait", "service_outage", "unknown"]
+          }
+        },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "TaskSessionAssociation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "object_type",
+        "association_id",
+        "task_id",
+        "session_id",
+        "relationship",
+        "source",
+        "confidence",
+        "created_by_actor_id",
+        "created_at"
+      ],
+      "properties": {
+        "schema_version": { "type": "string", "const": "0.1.0" },
+        "object_type": { "type": "string", "const": "task_session_association" },
+        "association_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "task_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "session_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "run_id": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "relationship": {
+          "type": "string",
+          "enum": [
+            "primary_execution",
+            "supporting_research",
+            "review",
+            "validation",
+            "incident_response",
+            "imported_history",
+            "inferred_related"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "explicit_user_binding",
+            "upstream_workflow_binding",
+            "adapter_native_binding",
+            "deterministic_inference",
+            "llm_inference",
+            "manual_review"
+          ]
+        },
+        "inference_method_version": { "type": ["string", "null"], "maxLength": 128 },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "evidence_refs": { "$ref": "common.schema.json#/$defs/EvidenceRefList" },
+        "created_by_actor_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "created_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+        "review_status": {
+          "type": "string",
+          "enum": ["not_required", "pending", "confirmed", "rejected"]
+        },
+        "reviewed_by_actor_id": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "reviewed_at": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/Timestamp" },
+            { "type": "null" }
+          ]
+        },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    }
+  }
+}
