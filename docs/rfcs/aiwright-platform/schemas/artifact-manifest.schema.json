@@ -1,0 +1,314 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:aiwright:protocol:0.1:artifact-manifest",
+  "title": "AIwright Protocol v0.1 Artifact Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "artifact_type",
+    "artifact_class",
+    "title",
+    "scope",
+    "revision",
+    "provenance",
+    "governance",
+    "security",
+    "context_policy",
+    "relations",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "0.1.0" },
+    "artifact_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+    "artifact_type": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 128,
+      "pattern": "^[A-Z][A-Z0-9_]+$"
+    },
+    "artifact_class": {
+      "type": "string",
+      "enum": [
+        "governance_artifact",
+        "context_artifact",
+        "implementation_artifact",
+        "evidence_artifact",
+        "operational_artifact"
+      ]
+    },
+    "title": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "description": { "type": ["string", "null"], "maxLength": 4096 },
+    "scope": { "$ref": "common.schema.json#/$defs/Scope" },
+    "revision": { "$ref": "#/$defs/Revision" },
+    "provenance": { "$ref": "#/$defs/Provenance" },
+    "governance": { "$ref": "#/$defs/Governance" },
+    "security": { "$ref": "#/$defs/Security" },
+    "context_policy": { "$ref": "#/$defs/ContextPolicy" },
+    "relations": { "$ref": "#/$defs/Relations" },
+    "content": { "$ref": "common.schema.json#/$defs/ContentPointer" },
+    "created_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+    "updated_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+    "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+  },
+  "$defs": {
+    "Revision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "revision_id",
+        "source_system",
+        "source_revision",
+        "content_hash"
+      ],
+      "properties": {
+        "version": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "revision_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "source_system": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "source_uri": { "type": ["string", "null"], "maxLength": 2048 },
+        "source_revision": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "content_hash": { "$ref": "common.schema.json#/$defs/Hash" },
+        "supersedes_revision_id": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "created_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "Provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["created_by_actor_id", "created_by_type", "derived_from"],
+      "properties": {
+        "created_by_actor_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "created_by_type": {
+          "type": "string",
+          "enum": [
+            "human",
+            "human_with_agent_assistance",
+            "agent_generated",
+            "service_generated",
+            "external_import"
+          ]
+        },
+        "generated_by_model": { "type": ["string", "null"], "maxLength": 256 },
+        "generated_by_agent_id": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "derived_from": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Identifier" }
+        },
+        "origin_task_id": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "origin_run_id": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "import_source": { "type": ["string", "null"], "maxLength": 2048 },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "Governance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lifecycle_state",
+        "authority",
+        "owner_actor_id",
+        "required_review_roles",
+        "approval_refs",
+        "unresolved_finding_refs"
+      ],
+      "properties": {
+        "lifecycle_state": {
+          "type": "string",
+          "enum": [
+            "captured",
+            "draft",
+            "review_requested",
+            "reviewed",
+            "approved",
+            "canonical",
+            "superseded",
+            "deprecated",
+            "quarantined",
+            "rejected",
+            "integrity_failed",
+            "expired"
+          ]
+        },
+        "authority": {
+          "type": "string",
+          "enum": [
+            "untrusted_external",
+            "captured_reference",
+            "generated_draft",
+            "working_draft",
+            "reviewed_reference",
+            "approved_control",
+            "canonical",
+            "superseded",
+            "quarantined"
+          ]
+        },
+        "owner_actor_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "required_review_roles": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 128 }
+        },
+        "review_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Identifier" }
+        },
+        "approval_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Identifier" }
+        },
+        "unresolved_finding_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Identifier" }
+        },
+        "promotion_policy_version": { "type": ["string", "null"], "maxLength": 128 },
+        "expires_at": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/Timestamp" },
+            { "type": "null" }
+          ]
+        },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "Security": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "classification",
+        "integrity_requirement",
+        "content_mode",
+        "context_trust",
+        "allowed_provider_classes",
+        "prompt_injection_scan",
+        "secret_scan",
+        "signature_status",
+        "taint"
+      ],
+      "properties": {
+        "classification": { "$ref": "common.schema.json#/$defs/Classification" },
+        "integrity_requirement": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"]
+        },
+        "content_mode": { "$ref": "common.schema.json#/$defs/ContentMode" },
+        "context_trust": {
+          "type": "string",
+          "enum": [
+            "trusted_control",
+            "reviewed_internal",
+            "working_internal",
+            "external_untrusted",
+            "generated_unreviewed",
+            "integrity_failed",
+            "quarantined",
+            "unknown"
+          ]
+        },
+        "allowed_provider_classes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["local", "private", "approved_enterprise", "public_managed", "none"]
+          }
+        },
+        "prompt_injection_scan": {
+          "type": "string",
+          "enum": ["not_run", "passed", "passed_with_warnings", "failed", "unknown"]
+        },
+        "secret_scan": {
+          "type": "string",
+          "enum": ["not_run", "passed", "passed_with_warnings", "failed", "unknown"]
+        },
+        "malware_scan": {
+          "type": "string",
+          "enum": ["not_applicable", "not_run", "passed", "failed", "unknown"]
+        },
+        "signature_status": {
+          "type": "string",
+          "enum": ["not_required", "unverified", "verified", "failed", "unknown"]
+        },
+        "taint": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Taint" }
+        },
+        "security_event_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Identifier" }
+        },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "ContextPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["eligible", "instruction_role", "precedence", "allowed_task_types"],
+      "properties": {
+        "eligible": { "type": "boolean" },
+        "instruction_role": {
+          "type": "string",
+          "enum": [
+            "control",
+            "project_constraint",
+            "task_instruction",
+            "user_instruction",
+            "data_only",
+            "none"
+          ]
+        },
+        "precedence": { "type": "integer", "minimum": -1000, "maximum": 1000 },
+        "allowed_task_types": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 128 }
+        },
+        "max_excerpt_tokens": { "type": ["integer", "null"], "minimum": 0 },
+        "expires_at": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/Timestamp" },
+            { "type": "null" }
+          ]
+        },
+        "provider_policy_version": { "type": ["string", "null"], "maxLength": 128 },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "Relations": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "derived_from": { "$ref": "#/$defs/IdentifierArray" },
+        "supersedes": { "$ref": "#/$defs/IdentifierArray" },
+        "constrains": { "$ref": "#/$defs/IdentifierArray" },
+        "implements": { "$ref": "#/$defs/IdentifierArray" },
+        "references": { "$ref": "#/$defs/IdentifierArray" },
+        "conflicts_with": { "$ref": "#/$defs/IdentifierArray" },
+        "depends_on": { "$ref": "#/$defs/IdentifierArray" },
+        "validated_by": { "$ref": "#/$defs/IdentifierArray" },
+        "produces": { "$ref": "#/$defs/IdentifierArray" },
+        "blocks": { "$ref": "#/$defs/IdentifierArray" },
+        "supports": { "$ref": "#/$defs/IdentifierArray" },
+        "refutes": { "$ref": "#/$defs/IdentifierArray" },
+        "released_as": { "$ref": "#/$defs/IdentifierArray" },
+        "recovered_by": { "$ref": "#/$defs/IdentifierArray" },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "IdentifierArray": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "common.schema.json#/$defs/Identifier" }
+    }
+  }
+}

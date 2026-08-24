@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:aiwright:protocol:0.1:event-envelope",
+  "title": "AIwright Protocol v0.1 Event Envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "event_type",
+    "occurred_at",
+    "observed_at",
+    "ingested_at",
+    "time_quality",
+    "source",
+    "scope",
+    "actor",
+    "privacy",
+    "payload",
+    "integrity"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "0.1.0"
+    },
+    "event_id": {
+      "$ref": "common.schema.json#/$defs/Identifier"
+    },
+    "event_type": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 192,
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"
+    },
+    "occurred_at": {
+      "$ref": "common.schema.json#/$defs/Timestamp"
+    },
+    "observed_at": {
+      "$ref": "common.schema.json#/$defs/Timestamp"
+    },
+    "ingested_at": {
+      "$ref": "common.schema.json#/$defs/Timestamp"
+    },
+    "time_quality": {
+      "type": "string",
+      "enum": [
+        "source_reported",
+        "collector_assigned",
+        "reconstructed",
+        "unknown"
+      ]
+    },
+    "source": {
+      "$ref": "common.schema.json#/$defs/SourceMetadata"
+    },
+    "scope": {
+      "$ref": "common.schema.json#/$defs/Scope"
+    },
+    "actor": {
+      "$ref": "common.schema.json#/$defs/ActorRef"
+    },
+    "privacy": {
+      "$ref": "common.schema.json#/$defs/PrivacyMetadata"
+    },
+    "payload": {
+      "$ref": "#/$defs/Payload"
+    },
+    "integrity": {
+      "$ref": "common.schema.json#/$defs/IntegrityMetadata"
+    },
+    "parent_event_id": {
+      "$ref": "common.schema.json#/$defs/NullableIdentifier"
+    },
+    "causation_id": {
+      "$ref": "common.schema.json#/$defs/NullableIdentifier"
+    },
+    "correlation_id": {
+      "$ref": "common.schema.json#/$defs/NullableIdentifier"
+    },
+    "idempotency_key": {
+      "type": ["string", "null"],
+      "maxLength": 1024
+    },
+    "idempotency_quality": {
+      "type": "string",
+      "enum": ["source_native", "derived", "unknown"]
+    },
+    "extensions": {
+      "$ref": "common.schema.json#/$defs/Extensions"
+    }
+  },
+  "$defs": {
+    "Payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "metadata", "content"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "status": {
+          "type": ["string", "null"],
+          "maxLength": 128
+        },
+        "metadata": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/MetadataValue"
+          },
+          "maxProperties": 256
+        },
+        "content": {
+          "$ref": "common.schema.json#/$defs/ContentPointer"
+        },
+        "artifact_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common.schema.json#/$defs/Identifier"
+          }
+        },
+        "evidence_refs": {
+          "$ref": "common.schema.json#/$defs/EvidenceRefList"
+        },
+        "permission_request_id": {
+          "$ref": "common.schema.json#/$defs/NullableIdentifier"
+        },
+        "policy_decision_id": {
+          "$ref": "common.schema.json#/$defs/NullableIdentifier"
+        },
+        "security_event_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common.schema.json#/$defs/Identifier"
+          }
+        },
+        "extensions": {
+          "$ref": "common.schema.json#/$defs/Extensions"
+        }
+      }
+    },
+    "MetadataPrimitive": {
+      "oneOf": [
+        { "type": "string", "maxLength": 4096 },
+        { "type": "number" },
+        { "type": "integer" },
+        { "type": "boolean" },
+        { "type": "null" }
+      ]
+    },
+    "MetadataValue": {
+      "oneOf": [
+        { "$ref": "#/$defs/MetadataPrimitive" },
+        {
+          "type": "array",
+          "maxItems": 256,
+          "items": { "$ref": "#/$defs/MetadataPrimitive" }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,358 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:aiwright:protocol:0.1:incident-record",
+  "title": "AIwright Protocol v0.1 Incident Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "incident_id",
+    "title",
+    "severity",
+    "status",
+    "scope",
+    "owner_actor_id",
+    "created_at",
+    "security_event_refs",
+    "affected",
+    "containment",
+    "transitions",
+    "recovery_gates",
+    "notifications",
+    "residual_risk",
+    "post_incident_actions"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "0.1.0" },
+    "incident_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+    "title": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "summary": { "type": ["string", "null"], "maxLength": 8192 },
+    "severity": { "$ref": "common.schema.json#/$defs/SecuritySeverity" },
+    "status": {
+      "type": "string",
+      "enum": [
+        "suspected",
+        "triaged",
+        "contained",
+        "investigated",
+        "eradicated",
+        "recovered",
+        "monitored",
+        "closed"
+      ]
+    },
+    "scope": { "$ref": "common.schema.json#/$defs/Scope" },
+    "owner_actor_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+    "created_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+    "detected_at": {
+      "oneOf": [
+        { "$ref": "common.schema.json#/$defs/Timestamp" },
+        { "type": "null" }
+      ]
+    },
+    "closed_at": {
+      "oneOf": [
+        { "$ref": "common.schema.json#/$defs/Timestamp" },
+        { "type": "null" }
+      ]
+    },
+    "security_event_refs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "common.schema.json#/$defs/Identifier" }
+    },
+    "evidence_refs": { "$ref": "common.schema.json#/$defs/EvidenceRefList" },
+    "affected": { "$ref": "#/$defs/Affected" },
+    "containment": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ContainmentAction" },
+      "maxItems": 512
+    },
+    "transitions": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/Transition" },
+      "maxItems": 512
+    },
+    "recovery_gates": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/RecoveryGate" },
+      "maxItems": 256
+    },
+    "notifications": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Notification" },
+      "maxItems": 512
+    },
+    "residual_risk": { "$ref": "#/$defs/ResidualRisk" },
+    "post_incident_actions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/PostIncidentAction" },
+      "maxItems": 512
+    },
+    "incident_artifact_refs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "common.schema.json#/$defs/Identifier" }
+    },
+    "privacy": { "$ref": "common.schema.json#/$defs/PrivacyMetadata" },
+    "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+  },
+  "$defs": {
+    "Affected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actor_ids",
+        "task_ids",
+        "run_ids",
+        "session_ids",
+        "artifact_ids",
+        "tool_refs",
+        "connector_refs",
+        "destinations",
+        "data_classifications"
+      ],
+      "properties": {
+        "actor_ids": { "$ref": "#/$defs/IdentifierArray" },
+        "task_ids": { "$ref": "#/$defs/IdentifierArray" },
+        "run_ids": { "$ref": "#/$defs/IdentifierArray" },
+        "session_ids": { "$ref": "#/$defs/IdentifierArray" },
+        "artifact_ids": { "$ref": "#/$defs/IdentifierArray" },
+        "tool_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 2048 }
+        },
+        "connector_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 2048 }
+        },
+        "destinations": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 2048 }
+        },
+        "data_classifications": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Classification" }
+        },
+        "known_data_exposure": { "type": ["boolean", "null"] },
+        "exposure_summary": { "type": ["string", "null"], "maxLength": 8192 },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "ContainmentAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "containment_action_id",
+        "action",
+        "scope_ref",
+        "status",
+        "initiated_by_actor_id",
+        "initiated_at"
+      ],
+      "properties": {
+        "containment_action_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "action": {
+          "type": "string",
+          "enum": [
+            "terminate_process",
+            "terminate_run",
+            "revoke_grant",
+            "revoke_token",
+            "rotate_secret",
+            "disable_egress",
+            "freeze_export",
+            "freeze_artifact_promotion",
+            "freeze_memory_write",
+            "quarantine_artifact",
+            "quarantine_tool",
+            "disable_adapter",
+            "enter_restricted_mode",
+            "snapshot_evidence",
+            "other"
+          ]
+        },
+        "scope_ref": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "status": { "type": "string", "enum": ["planned", "in_progress", "completed", "failed", "not_applicable"] },
+        "initiated_by_actor_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "initiated_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+        "completed_at": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/Timestamp" },
+            { "type": "null" }
+          ]
+        },
+        "evidence_refs": { "$ref": "common.schema.json#/$defs/EvidenceRefList" },
+        "failure_reason": { "type": ["string", "null"], "maxLength": 4096 },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "Transition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "from_status",
+        "to_status",
+        "actor_id",
+        "occurred_at",
+        "rationale",
+        "evidence_refs"
+      ],
+      "properties": {
+        "from_status": {
+          "type": ["string", "null"],
+          "enum": [
+            "suspected",
+            "triaged",
+            "contained",
+            "investigated",
+            "eradicated",
+            "recovered",
+            "monitored",
+            "closed",
+            null
+          ]
+        },
+        "to_status": {
+          "type": "string",
+          "enum": [
+            "suspected",
+            "triaged",
+            "contained",
+            "investigated",
+            "eradicated",
+            "recovered",
+            "monitored",
+            "closed"
+          ]
+        },
+        "actor_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "occurred_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+        "rationale": { "type": "string", "minLength": 1, "maxLength": 8192 },
+        "evidence_refs": { "$ref": "common.schema.json#/$defs/EvidenceRefList" },
+        "approval_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Identifier" }
+        },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "RecoveryGate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gate_id", "gate_type", "status", "required", "evidence_refs"],
+      "properties": {
+        "gate_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "gate_type": {
+          "type": "string",
+          "enum": [
+            "clean_context",
+            "credential_rotation",
+            "artifact_integrity",
+            "tool_integrity",
+            "data_recipient_review",
+            "permission_minimization",
+            "task_outcome_reclassification",
+            "user_notification",
+            "regression_fixture",
+            "monitoring_window",
+            "other"
+          ]
+        },
+        "status": { "type": "string", "enum": ["pending", "passed", "failed", "waived", "not_applicable"] },
+        "required": { "type": "boolean" },
+        "owner_actor_id": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "evidence_refs": { "$ref": "common.schema.json#/$defs/EvidenceRefList" },
+        "waiver_approval_ref": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "notes": { "type": ["string", "null"], "maxLength": 4096 },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "Notification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["notification_type", "recipient_ref", "status", "occurred_at"],
+      "properties": {
+        "notification_type": {
+          "type": "string",
+          "enum": ["user", "project_owner", "security_owner", "privacy_owner", "tenant_admin", "legal", "external_recipient", "other"]
+        },
+        "recipient_ref": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "status": { "type": "string", "enum": ["planned", "sent", "failed", "suppressed", "not_required"] },
+        "occurred_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+        "content_artifact_ref": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "ResidualRisk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "summary", "accepted_by_actor_id", "accepted_at"],
+      "properties": {
+        "status": { "type": "string", "enum": ["unknown", "unacceptable", "mitigated", "accepted", "transferred", "none_identified"] },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 8192 },
+        "accepted_by_actor_id": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "accepted_at": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/Timestamp" },
+            { "type": "null" }
+          ]
+        },
+        "expires_at": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/Timestamp" },
+            { "type": "null" }
+          ]
+        },
+        "review_artifact_ref": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "PostIncidentAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action_id", "action_type", "status", "owner_actor_id"],
+      "properties": {
+        "action_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "action_type": {
+          "type": "string",
+          "enum": [
+            "update_control",
+            "update_policy",
+            "update_evaluator",
+            "create_fixture",
+            "create_red_team_case",
+            "update_runbook",
+            "update_artifact",
+            "training_or_guidance",
+            "notify_affected_party",
+            "other"
+          ]
+        },
+        "status": { "type": "string", "enum": ["planned", "in_progress", "completed", "cancelled", "blocked"] },
+        "owner_actor_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "due_at": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/Timestamp" },
+            { "type": "null" }
+          ]
+        },
+        "artifact_refs": { "$ref": "#/$defs/IdentifierArray" },
+        "notes": { "type": ["string", "null"], "maxLength": 4096 },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "IdentifierArray": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "common.schema.json#/$defs/Identifier" }
+    }
+  }
+}

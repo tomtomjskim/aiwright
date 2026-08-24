@@ -1,0 +1,299 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:aiwright:protocol:0.1:common",
+  "title": "AIwright Protocol v0.1 Common Definitions",
+  "type": "object",
+  "$defs": {
+    "Identifier": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]+$"
+    },
+    "NullableIdentifier": {
+      "oneOf": [
+        { "$ref": "#/$defs/Identifier" },
+        { "type": "null" }
+      ]
+    },
+    "Timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "Hash": {
+      "type": "string",
+      "pattern": "^(sha256|sha384|sha512):[A-Fa-f0-9]+$"
+    },
+    "Extensions": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{1,127}$"
+      },
+      "additionalProperties": true
+    },
+    "Classification": {
+      "type": "string",
+      "enum": [
+        "C0_PUBLIC",
+        "C1_INTERNAL",
+        "C2_CONFIDENTIAL",
+        "C3_RESTRICTED",
+        "C4_SECRET",
+        "UNKNOWN"
+      ]
+    },
+    "ContentMode": {
+      "type": "string",
+      "enum": [
+        "disabled",
+        "metadata_only",
+        "redacted_content",
+        "full_content_local",
+        "full_content_managed"
+      ]
+    },
+    "ContentPlacement": {
+      "type": "string",
+      "enum": [
+        "none",
+        "inline_redacted",
+        "local_blob",
+        "managed_blob",
+        "external_reference",
+        "hash_only"
+      ]
+    },
+    "Taint": {
+      "type": "string",
+      "enum": [
+        "external_untrusted",
+        "tool_untrusted",
+        "generated_unreviewed",
+        "injection_suspected",
+        "integrity_failed",
+        "quarantined",
+        "secret_detected",
+        "cross_boundary",
+        "unknown"
+      ]
+    },
+    "RiskTier": {
+      "type": "string",
+      "enum": ["R0", "R1", "R2", "R3", "R4", "R5"]
+    },
+    "SecuritySeverity": {
+      "type": "string",
+      "enum": [
+        "P0_CRITICAL",
+        "P1_HIGH",
+        "P2_MEDIUM",
+        "P3_LOW",
+        "P4_INFO"
+      ]
+    },
+    "ActorType": {
+      "type": "string",
+      "enum": [
+        "human_user",
+        "human_reviewer",
+        "human_admin",
+        "service",
+        "collector",
+        "adapter",
+        "agent_root",
+        "agent_child",
+        "evaluator",
+        "policy_engine",
+        "connector",
+        "tool_service"
+      ]
+    },
+    "ActorRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actor_id", "actor_type"],
+      "properties": {
+        "actor_id": { "$ref": "#/$defs/Identifier" },
+        "actor_type": { "$ref": "#/$defs/ActorType" },
+        "delegated_by_actor_id": { "$ref": "#/$defs/NullableIdentifier" },
+        "execution_identity_id": { "$ref": "#/$defs/NullableIdentifier" },
+        "extensions": { "$ref": "#/$defs/Extensions" }
+      }
+    },
+    "Scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project_id"],
+      "properties": {
+        "tenant_id": { "$ref": "#/$defs/NullableIdentifier" },
+        "workspace_id": { "$ref": "#/$defs/NullableIdentifier" },
+        "project_id": { "$ref": "#/$defs/Identifier" },
+        "task_id": { "$ref": "#/$defs/NullableIdentifier" },
+        "root_task_id": { "$ref": "#/$defs/NullableIdentifier" },
+        "run_id": { "$ref": "#/$defs/NullableIdentifier" },
+        "session_id": { "$ref": "#/$defs/NullableIdentifier" },
+        "turn_id": { "$ref": "#/$defs/NullableIdentifier" },
+        "span_id": { "$ref": "#/$defs/NullableIdentifier" },
+        "parent_span_id": { "$ref": "#/$defs/NullableIdentifier" },
+        "extensions": { "$ref": "#/$defs/Extensions" }
+      }
+    },
+    "SourceMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapter",
+        "adapter_version",
+        "adapter_instance_id",
+        "stream_id"
+      ],
+      "properties": {
+        "adapter": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "adapter_version": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "mapping_version": { "type": ["string", "null"], "maxLength": 64 },
+        "adapter_instance_id": { "$ref": "#/$defs/Identifier" },
+        "client": { "type": ["string", "null"], "maxLength": 128 },
+        "client_version": { "type": ["string", "null"], "maxLength": 128 },
+        "provider": { "type": ["string", "null"], "maxLength": 128 },
+        "model": { "type": ["string", "null"], "maxLength": 256 },
+        "stream_id": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "source_event_id": { "type": ["string", "null"], "maxLength": 512 },
+        "source_sequence": { "type": ["integer", "null"], "minimum": 0 },
+        "source_revision": { "type": ["string", "null"], "maxLength": 512 },
+        "extensions": { "$ref": "#/$defs/Extensions" }
+      }
+    },
+    "PrivacyMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "content_mode",
+        "classification",
+        "taint",
+        "redaction_policy_version",
+        "retention_policy_version"
+      ],
+      "properties": {
+        "content_mode": { "$ref": "#/$defs/ContentMode" },
+        "classification": { "$ref": "#/$defs/Classification" },
+        "taint": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/Taint" }
+        },
+        "redaction_policy_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "retention_policy_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "provider_policy_version": { "type": ["string", "null"], "maxLength": 128 },
+        "residency": { "type": ["string", "null"], "maxLength": 128 },
+        "extensions": { "$ref": "#/$defs/Extensions" }
+      }
+    },
+    "ContentPointer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["placement"],
+      "properties": {
+        "placement": { "$ref": "#/$defs/ContentPlacement" },
+        "content_ref": { "type": ["string", "null"], "maxLength": 2048 },
+        "content_hash": {
+          "oneOf": [
+            { "$ref": "#/$defs/Hash" },
+            { "type": "null" }
+          ]
+        },
+        "media_type": { "type": ["string", "null"], "maxLength": 256 },
+        "size_bytes": { "type": ["integer", "null"], "minimum": 0 },
+        "excerpt": { "type": ["string", "null"], "maxLength": 8192 },
+        "extensions": { "$ref": "#/$defs/Extensions" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "placement": { "const": "inline_redacted" }
+            },
+            "required": ["placement"]
+          },
+          "then": {
+            "required": ["excerpt"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "placement": {
+                "enum": ["local_blob", "managed_blob", "external_reference"]
+              }
+            },
+            "required": ["placement"]
+          },
+          "then": {
+            "required": ["content_ref"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "placement": { "const": "hash_only" }
+            },
+            "required": ["placement"]
+          },
+          "then": {
+            "required": ["content_hash"]
+          }
+        }
+      ]
+    },
+    "IntegrityMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["payload_hash"],
+      "properties": {
+        "payload_hash": { "$ref": "#/$defs/Hash" },
+        "batch_id": { "$ref": "#/$defs/NullableIdentifier" },
+        "signature": { "type": ["string", "null"], "maxLength": 8192 },
+        "signature_algorithm": { "type": ["string", "null"], "maxLength": 128 },
+        "signature_key_id": { "type": ["string", "null"], "maxLength": 512 },
+        "extensions": { "$ref": "#/$defs/Extensions" }
+      }
+    },
+    "EvidenceRefList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/Identifier" }
+    },
+    "EffectLimits": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_files": { "type": ["integer", "null"], "minimum": 0 },
+        "max_records": { "type": ["integer", "null"], "minimum": 0 },
+        "max_recipients": { "type": ["integer", "null"], "minimum": 0 },
+        "max_bytes_read": { "type": ["integer", "null"], "minimum": 0 },
+        "max_bytes_written": { "type": ["integer", "null"], "minimum": 0 },
+        "max_network_requests": { "type": ["integer", "null"], "minimum": 0 },
+        "max_runtime_seconds": { "type": ["integer", "null"], "minimum": 0 },
+        "protected_resource": { "type": ["boolean", "null"] },
+        "external_publish": { "type": ["boolean", "null"] },
+        "destructive": { "type": ["boolean", "null"] },
+        "reversible": { "type": ["boolean", "null"] },
+        "extensions": { "$ref": "#/$defs/Extensions" }
+      }
+    },
+    "ControlHealth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["control_id", "status", "observed_at"],
+      "properties": {
+        "control_id": { "type": "string", "minLength": 3, "maxLength": 128 },
+        "status": {
+          "type": "string",
+          "enum": ["healthy", "degraded", "unavailable", "bypassed", "unknown"]
+        },
+        "observed_at": { "$ref": "#/$defs/Timestamp" },
+        "details_ref": { "type": ["string", "null"], "maxLength": 2048 },
+        "extensions": { "$ref": "#/$defs/Extensions" }
+      }
+    }
+  }
+}

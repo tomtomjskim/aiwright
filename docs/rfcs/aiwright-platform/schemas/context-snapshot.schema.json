@@ -1,0 +1,303 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:aiwright:protocol:0.1:context-snapshot",
+  "title": "AIwright Protocol v0.1 Context Snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "context_snapshot_id",
+    "scope",
+    "created_at",
+    "created_by_actor_id",
+    "sources",
+    "aggregate",
+    "provider_decision",
+    "integrity"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "0.1.0" },
+    "context_snapshot_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+    "scope": { "$ref": "common.schema.json#/$defs/Scope" },
+    "created_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+    "created_by_actor_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+    "associated_model_invocation_event_id": {
+      "$ref": "common.schema.json#/$defs/NullableIdentifier"
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2048,
+      "items": { "$ref": "#/$defs/ContextSource" }
+    },
+    "aggregate": { "$ref": "#/$defs/Aggregate" },
+    "provider_decision": { "$ref": "#/$defs/ProviderDecision" },
+    "compaction_lineage": { "$ref": "#/$defs/CompactionLineage" },
+    "integrity": { "$ref": "common.schema.json#/$defs/IntegrityMetadata" },
+    "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+  },
+  "$defs": {
+    "ContextSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "context_source_id",
+        "source_type",
+        "source_revision",
+        "content_hash",
+        "origin",
+        "trust",
+        "authority",
+        "classification",
+        "model_visibility",
+        "derivation",
+        "taint",
+        "selection",
+        "precedence",
+        "content"
+      ],
+      "properties": {
+        "context_source_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "artifact_id": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "artifact_revision_id": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "source_type": {
+          "type": "string",
+          "enum": [
+            "system_instruction",
+            "developer_instruction",
+            "managed_policy",
+            "project_instruction",
+            "skill",
+            "prompt_fragment",
+            "task_contract",
+            "user_message",
+            "conversation_history",
+            "memory",
+            "retrieval_result",
+            "repository_file",
+            "artifact_excerpt",
+            "attachment",
+            "web_content",
+            "email_or_message",
+            "tool_description",
+            "tool_result",
+            "agent_handoff",
+            "compacted_summary",
+            "other"
+          ]
+        },
+        "source_revision": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "content_hash": { "$ref": "common.schema.json#/$defs/Hash" },
+        "origin": { "$ref": "#/$defs/Origin" },
+        "trust": {
+          "type": "string",
+          "enum": [
+            "trusted_control",
+            "reviewed_internal",
+            "working_internal",
+            "external_untrusted",
+            "generated_unreviewed",
+            "integrity_failed",
+            "quarantined",
+            "unknown"
+          ]
+        },
+        "authority": {
+          "type": "string",
+          "enum": [
+            "control",
+            "project_constraint",
+            "task_instruction",
+            "user_instruction",
+            "data_only",
+            "none"
+          ]
+        },
+        "classification": { "$ref": "common.schema.json#/$defs/Classification" },
+        "model_visibility": {
+          "type": "string",
+          "enum": [
+            "visible",
+            "runtime_only",
+            "unknown",
+            "redacted_from_platform",
+            "not_sent"
+          ]
+        },
+        "visibility_evidence_event_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Identifier" }
+        },
+        "derivation": {
+          "type": "string",
+          "enum": [
+            "original",
+            "selected_excerpt",
+            "summarized",
+            "compacted",
+            "transformed",
+            "inherited",
+            "generated",
+            "unknown"
+          ]
+        },
+        "derived_from_context_source_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Identifier" }
+        },
+        "taint": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Taint" }
+        },
+        "selection": {
+          "type": "string",
+          "enum": ["selected", "excluded", "truncated", "unknown"]
+        },
+        "selection_reason_codes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 128 }
+        },
+        "precedence": { "type": "integer", "minimum": -1000, "maximum": 1000 },
+        "order_index": { "type": ["integer", "null"], "minimum": 0 },
+        "estimated_tokens": { "type": ["integer", "null"], "minimum": 0 },
+        "expires_at": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/Timestamp" },
+            { "type": "null" }
+          ]
+        },
+        "content": { "$ref": "common.schema.json#/$defs/ContentPointer" },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "Origin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["origin_type"],
+      "properties": {
+        "origin_type": {
+          "type": "string",
+          "enum": [
+            "platform_control",
+            "managed_configuration",
+            "project_repository",
+            "user_input",
+            "external_service",
+            "external_web",
+            "tool_runtime",
+            "agent_generated",
+            "imported_trace",
+            "unknown"
+          ]
+        },
+        "source_uri": { "type": ["string", "null"], "maxLength": 2048 },
+        "source_actor_id": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "source_event_id": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "source_adapter": { "type": ["string", "null"], "maxLength": 128 },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "Aggregate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_count",
+        "selected_source_count",
+        "highest_classification",
+        "taint",
+        "estimated_tokens",
+        "security_constraint_status",
+        "completeness"
+      ],
+      "properties": {
+        "source_count": { "type": "integer", "minimum": 0 },
+        "selected_source_count": { "type": "integer", "minimum": 0 },
+        "highest_classification": { "$ref": "common.schema.json#/$defs/Classification" },
+        "taint": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Taint" }
+        },
+        "estimated_tokens": { "type": ["integer", "null"], "minimum": 0 },
+        "security_constraint_status": {
+          "type": "string",
+          "enum": ["preserved", "partially_preserved", "lost", "unknown"]
+        },
+        "completeness": {
+          "type": "string",
+          "enum": ["complete", "partial", "unknown"]
+        },
+        "unknown_visibility_count": { "type": "integer", "minimum": 0 },
+        "conflict_finding_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Identifier" }
+        },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "ProviderDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision", "policy_version", "provider_class"],
+      "properties": {
+        "decision": {
+          "type": "string",
+          "enum": ["allow", "deny", "redact_more", "local_only", "unknown"]
+        },
+        "policy_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "provider_class": {
+          "type": "string",
+          "enum": ["local", "private", "approved_enterprise", "public_managed", "none", "unknown"]
+        },
+        "provider": { "type": ["string", "null"], "maxLength": 128 },
+        "model": { "type": ["string", "null"], "maxLength": 256 },
+        "reason_codes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 128 }
+        },
+        "policy_decision_id": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "CompactionLineage": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": [
+        "source_context_snapshot_id",
+        "summarizer",
+        "summarizer_version",
+        "preserved_source_ids",
+        "omitted_source_ids",
+        "known_loss"
+      ],
+      "properties": {
+        "source_context_snapshot_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "summarizer": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "summarizer_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "preserved_source_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Identifier" }
+        },
+        "omitted_source_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Identifier" }
+        },
+        "known_loss": { "type": "boolean" },
+        "loss_description": { "type": ["string", "null"], "maxLength": 4096 },
+        "security_constraint_retention": {
+          "type": "string",
+          "enum": ["preserved", "partially_preserved", "lost", "unknown"]
+        },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    }
+  }
+}

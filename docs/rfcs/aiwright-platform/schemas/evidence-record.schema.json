@@ -1,0 +1,274 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:aiwright:protocol:0.1:evidence-record",
+  "title": "AIwright Protocol v0.1 Evidence Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "evidence_id",
+    "scope",
+    "evidence_level",
+    "evidence_type",
+    "claim",
+    "source",
+    "validated_revision",
+    "validator",
+    "independence_level",
+    "coverage",
+    "result",
+    "confidence",
+    "artifact_refs",
+    "event_refs",
+    "limitations",
+    "recorded_at"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "0.1.0" },
+    "evidence_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+    "scope": { "$ref": "common.schema.json#/$defs/Scope" },
+    "evidence_level": {
+      "type": "string",
+      "enum": [
+        "E0_CLAIM",
+        "E1_OPERATIONAL",
+        "E2_SCOPED_AUTOMATED",
+        "E3_INDEPENDENT",
+        "E4_FIELD_OUTCOME"
+      ]
+    },
+    "evidence_type": {
+      "type": "string",
+      "enum": [
+        "completion_claim",
+        "process_exit",
+        "command_result",
+        "lint_result",
+        "typecheck_result",
+        "test_result",
+        "schema_validation",
+        "security_scan",
+        "policy_decision",
+        "code_review",
+        "artifact_review",
+        "ci_check",
+        "external_system_state",
+        "user_acceptance",
+        "operator_acceptance",
+        "production_observation",
+        "rollback_observation",
+        "incident_record",
+        "other"
+      ]
+    },
+    "claim": { "$ref": "#/$defs/Claim" },
+    "source": { "$ref": "#/$defs/EvidenceSource" },
+    "validated_revision": { "$ref": "#/$defs/ValidatedRevision" },
+    "validator": { "$ref": "#/$defs/Validator" },
+    "independence_level": {
+      "type": "string",
+      "enum": [
+        "same_actor_same_run",
+        "same_actor_separate_run",
+        "independent_automation",
+        "independent_human",
+        "external_system",
+        "field_observation",
+        "unknown"
+      ]
+    },
+    "coverage": { "$ref": "#/$defs/Coverage" },
+    "result": {
+      "type": "string",
+      "enum": ["pass", "fail", "partial", "inconclusive", "error", "not_applicable"]
+    },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "artifact_refs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "common.schema.json#/$defs/Identifier" }
+    },
+    "event_refs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "common.schema.json#/$defs/Identifier" }
+    },
+    "content": { "$ref": "common.schema.json#/$defs/ContentPointer" },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1, "maxLength": 1024 },
+      "maxItems": 64
+    },
+    "recorded_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+    "observed_at": {
+      "oneOf": [
+        { "$ref": "common.schema.json#/$defs/Timestamp" },
+        { "type": "null" }
+      ]
+    },
+    "expires_at": {
+      "oneOf": [
+        { "$ref": "common.schema.json#/$defs/Timestamp" },
+        { "type": "null" }
+      ]
+    },
+    "superseded_by_evidence_id": {
+      "$ref": "common.schema.json#/$defs/NullableIdentifier"
+    },
+    "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+  },
+  "$defs": {
+    "Claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claim_type", "claim_ref", "statement"],
+      "properties": {
+        "claim_type": {
+          "type": "string",
+          "enum": [
+            "acceptance_criterion",
+            "artifact_quality",
+            "behavior_preserved",
+            "security_control_effective",
+            "policy_compliant",
+            "task_complete",
+            "task_outcome",
+            "deployment_healthy",
+            "incident_contained",
+            "other"
+          ]
+        },
+        "claim_ref": { "type": "string", "minLength": 1, "maxLength": 1024 },
+        "statement": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "acceptance_criterion_index": { "type": ["integer", "null"], "minimum": 0 },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "EvidenceSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_type", "source_ref", "source_revision", "evidence_time"],
+      "properties": {
+        "source_type": {
+          "type": "string",
+          "enum": [
+            "event",
+            "artifact",
+            "command",
+            "test_runner",
+            "ci_system",
+            "review_system",
+            "external_api",
+            "human_statement",
+            "production_monitor",
+            "incident_system",
+            "other"
+          ]
+        },
+        "source_ref": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "source_revision": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "evidence_time": { "$ref": "common.schema.json#/$defs/Timestamp" },
+        "source_hash": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/Hash" },
+            { "type": "null" }
+          ]
+        },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "ValidatedRevision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_type", "target_ref", "target_revision"],
+      "properties": {
+        "target_type": {
+          "type": "string",
+          "enum": ["task", "run", "artifact", "artifact_set", "deployment", "policy", "control", "incident"]
+        },
+        "target_ref": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "target_revision": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "target_hash": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/Hash" },
+            { "type": "null" }
+          ]
+        },
+        "equivalence_claim_ref": { "type": ["string", "null"], "maxLength": 2048 },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "Validator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["validator_type", "validator_identity", "validator_name", "validator_version"],
+      "properties": {
+        "validator_type": {
+          "type": "string",
+          "enum": [
+            "agent",
+            "deterministic_rule",
+            "test_runner",
+            "ci_system",
+            "human_reviewer",
+            "external_system",
+            "llm_evaluator",
+            "field_monitor",
+            "other"
+          ]
+        },
+        "validator_identity": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "validator_actor_id": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "validator_name": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "validator_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "rubric_or_policy_version": { "type": ["string", "null"], "maxLength": 128 },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "Coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["coverage_type", "statement"],
+      "properties": {
+        "coverage_type": {
+          "type": "string",
+          "enum": [
+            "single_criterion",
+            "criterion_subset",
+            "all_declared_criteria",
+            "artifact_subset",
+            "full_artifact_set",
+            "sampled_runtime",
+            "continuous_window",
+            "unknown"
+          ]
+        },
+        "statement": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "covered_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 2048 }
+        },
+        "excluded_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 2048 }
+        },
+        "sample_size": { "type": ["integer", "null"], "minimum": 0 },
+        "window_start": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/Timestamp" },
+            { "type": "null" }
+          ]
+        },
+        "window_end": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/Timestamp" },
+            { "type": "null" }
+          ]
+        },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    }
+  }
+}
