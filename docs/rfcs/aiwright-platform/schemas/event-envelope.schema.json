@@ -108,7 +108,15 @@
         },
         "metadata": {
           "type": "object",
-          "additionalProperties": true,
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/MetadataValue"
+          },
           "maxProperties": 256
         },
         "content": {
@@ -141,6 +149,25 @@
           "$ref": "common.schema.json#/$defs/Extensions"
         }
       }
+    },
+    "MetadataPrimitive": {
+      "oneOf": [
+        { "type": "string", "maxLength": 4096 },
+        { "type": "number" },
+        { "type": "integer" },
+        { "type": "boolean" },
+        { "type": "null" }
+      ]
+    },
+    "MetadataValue": {
+      "oneOf": [
+        { "$ref": "#/$defs/MetadataPrimitive" },
+        {
+          "type": "array",
+          "maxItems": 256,
+          "items": { "$ref": "#/$defs/MetadataPrimitive" }
+        }
+      ]
     }
   }
 }
