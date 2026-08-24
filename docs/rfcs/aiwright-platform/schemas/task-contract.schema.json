@@ -94,7 +94,9 @@
           "then": {
             "required": ["confirmed_at", "confirmed_by_actor_id"],
             "properties": {
-              "intent": { "type": "string", "minLength": 1, "maxLength": 8192 }
+              "intent": { "type": "string", "minLength": 1, "maxLength": 8192 },
+              "confirmed_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+              "confirmed_by_actor_id": { "$ref": "common.schema.json#/$defs/Identifier" }
             }
           }
         }
@@ -174,7 +176,8 @@
         "source",
         "confidence",
         "created_by_actor_id",
-        "created_at"
+        "created_at",
+        "review_status"
       ],
       "properties": {
         "schema_version": { "type": "string", "const": "0.1.0" },
