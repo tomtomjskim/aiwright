@@ -17,6 +17,7 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - run: npm run validate:rfc-schemas
       - run: npm test
       - run: npm run lint
       - run: npm run test:dist
