@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:aiwright:protocol:0.1:projection-manifest",
+  "title": "AIwright Protocol v0.1 Projection Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "projection_id",
+    "projection_type",
+    "projection_revision",
+    "scope",
+    "source_ranges",
+    "versions",
+    "built_by_actor_id",
+    "built_at",
+    "input_hash",
+    "output_hash",
+    "deterministic",
+    "completeness",
+    "gaps",
+    "integrity"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "0.1.0" },
+    "projection_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+    "projection_type": {
+      "type": "string",
+      "enum": [
+        "task_graph",
+        "session_timeline",
+        "context_graph",
+        "artifact_graph",
+        "evidence_graph",
+        "authorization_ledger",
+        "security_correlation",
+        "incident_view",
+        "evaluation_report",
+        "outcome_report",
+        "other"
+      ]
+    },
+    "projection_revision": { "type": "integer", "minimum": 1 },
+    "scope": { "$ref": "common.schema.json#/$defs/Scope" },
+    "source_ranges": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4096,
+      "items": { "$ref": "#/$defs/SourceRange" }
+    },
+    "versions": { "$ref": "#/$defs/Versions" },
+    "built_by_actor_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+    "built_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+    "input_hash": { "$ref": "common.schema.json#/$defs/Hash" },
+    "output_hash": { "$ref": "common.schema.json#/$defs/Hash" },
+    "canonicalization": {
+      "type": "string",
+      "enum": ["JCS_RFC8785", "implementation_defined_versioned"]
+    },
+    "deterministic": { "type": "boolean" },
+    "completeness": {
+      "type": "string",
+      "enum": ["complete", "partial", "unknown"]
+    },
+    "gaps": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Gap" },
+      "maxItems": 4096
+    },
+    "unknown_event_types": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 3, "maxLength": 192 }
+    },
+    "unsupported_source_fields": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 1024 }
+    },
+    "output": { "$ref": "common.schema.json#/$defs/ContentPointer" },
+    "integrity": { "$ref": "common.schema.json#/$defs/IntegrityMetadata" },
+    "supersedes_projection_id": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+    "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+  },
+  "$defs": {
+    "SourceRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapter_instance_id",
+        "stream_id",
+        "range_hash",
+        "completeness"
+      ],
+      "properties": {
+        "adapter_instance_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+        "stream_id": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "first_source_sequence": { "type": ["integer", "null"], "minimum": 0 },
+        "last_source_sequence": { "type": ["integer", "null"], "minimum": 0 },
+        "first_event_id": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "last_event_id": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "event_count": { "type": ["integer", "null"], "minimum": 0 },
+        "range_hash": { "$ref": "common.schema.json#/$defs/Hash" },
+        "completeness": {
+          "type": "string",
+          "enum": ["complete", "partial", "unknown"]
+        },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "Versions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol_schema_version",
+        "adapter_versions",
+        "mapping_versions",
+        "reducer_name",
+        "reducer_version",
+        "redaction_policy_version",
+        "retention_policy_version"
+      ],
+      "properties": {
+        "protocol_schema_version": { "type": "string", "const": "0.1.0" },
+        "adapter_versions": {
+          "type": "object",
+          "propertyNames": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "additionalProperties": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "maxProperties": 128
+        },
+        "mapping_versions": {
+          "type": "object",
+          "propertyNames": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "additionalProperties": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "maxProperties": 128
+        },
+        "reducer_name": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "reducer_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "redaction_policy_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "retention_policy_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "permission_policy_version": { "type": ["string", "null"], "maxLength": 128 },
+        "security_rule_versions": {
+          "type": "object",
+          "propertyNames": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "additionalProperties": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "maxProperties": 512
+        },
+        "evaluator_versions": {
+          "type": "object",
+          "propertyNames": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "additionalProperties": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "maxProperties": 256
+        },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "Gap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gap_type", "description", "severity"],
+      "properties": {
+        "gap_type": {
+          "type": "string",
+          "enum": [
+            "missing_event",
+            "sequence_gap",
+            "unknown_order",
+            "unsupported_event",
+            "unsupported_field",
+            "missing_relationship",
+            "unknown_model_visibility",
+            "missing_content",
+            "integrity_failure",
+            "control_observation_gap",
+            "other"
+          ]
+        },
+        "description": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "severity": {
+          "type": "string",
+          "enum": ["info", "low", "medium", "high", "critical"]
+        },
+        "source_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 2048 }
+        },
+        "affects_claims": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 2048 }
+        },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    }
+  }
+}
