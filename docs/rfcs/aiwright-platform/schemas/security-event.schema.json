@@ -28,7 +28,7 @@
       "type": "string",
       "minLength": 3,
       "maxLength": 192,
-      "pattern": "^(security|prompt_injection|goal_hijack|secret|sensitive_egress|permission|tool_sequence|bulk_access|mcp_manifest|token|artifact|evaluator_injection|sandbox|unexpected_code_execution|cross_tenant_access|audit_gap|rate_or_budget|emergency_stop)(\\.[a-z][a-z0-9_]*)+$"
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"
     },
     "severity": { "$ref": "common.schema.json#/$defs/SecuritySeverity" },
     "occurred_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
@@ -92,10 +92,58 @@
       "type": ["string", "null"],
       "maxLength": 2048
     },
+    "content_preview_hash": {
+      "oneOf": [
+        { "$ref": "common.schema.json#/$defs/Hash" },
+        { "type": "null" }
+      ]
+    },
     "disposition": { "$ref": "#/$defs/Disposition" },
     "privacy": { "$ref": "common.schema.json#/$defs/PrivacyMetadata" },
     "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "privacy": {
+            "properties": {
+              "classification": {
+                "enum": ["C3_RESTRICTED", "C4_SECRET"]
+              }
+            },
+            "required": ["classification"]
+          }
+        },
+        "required": ["privacy"]
+      },
+      "then": {
+        "properties": {
+          "content_preview": { "const": null }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "privacy": {
+            "properties": {
+              "taint": {
+                "contains": { "const": "secret_detected" }
+              }
+            },
+            "required": ["taint"]
+          }
+        },
+        "required": ["privacy"]
+      },
+      "then": {
+        "properties": {
+          "content_preview": { "const": null }
+        }
+      }
+    }
+  ],
   "$defs": {
     "Resource": {
       "type": "object",
