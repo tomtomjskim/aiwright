@@ -1,0 +1,213 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:aiwright:protocol:0.1:delegation-record",
+  "title": "AIwright Protocol v0.1 Delegation Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "delegation_id",
+    "scope",
+    "delegator",
+    "delegate",
+    "purpose",
+    "handoff",
+    "allowed_context",
+    "allowed_artifacts",
+    "parent_grant_refs",
+    "child_grant_refs",
+    "status",
+    "created_at",
+    "expires_at",
+    "revocation"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "0.1.0" },
+    "delegation_id": { "$ref": "common.schema.json#/$defs/Identifier" },
+    "scope": { "$ref": "common.schema.json#/$defs/Scope" },
+    "delegator": { "$ref": "common.schema.json#/$defs/ActorRef" },
+    "delegate": { "$ref": "common.schema.json#/$defs/ActorRef" },
+    "purpose": { "type": "string", "minLength": 1, "maxLength": 2048 },
+    "handoff": { "$ref": "#/$defs/Handoff" },
+    "allowed_context": { "$ref": "#/$defs/AllowedContext" },
+    "allowed_artifacts": { "$ref": "#/$defs/AllowedArtifacts" },
+    "parent_grant_refs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "common.schema.json#/$defs/Identifier" }
+    },
+    "child_grant_refs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "common.schema.json#/$defs/Identifier" }
+    },
+    "permission_subset_check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "policy_version", "checked_at"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["passed", "failed", "not_checked", "unknown"]
+        },
+        "policy_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "checked_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+        "policy_decision_ref": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "reason_codes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 128 }
+        },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": ["proposed", "active", "completed", "stopped", "expired", "revoked", "denied", "failed"]
+    },
+    "created_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+    "started_at": {
+      "oneOf": [
+        { "$ref": "common.schema.json#/$defs/Timestamp" },
+        { "type": "null" }
+      ]
+    },
+    "completed_at": {
+      "oneOf": [
+        { "$ref": "common.schema.json#/$defs/Timestamp" },
+        { "type": "null" }
+      ]
+    },
+    "expires_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+    "revocation": { "$ref": "#/$defs/Revocation" },
+    "source_event_refs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "common.schema.json#/$defs/Identifier" }
+    },
+    "result_artifact_refs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "common.schema.json#/$defs/Identifier" }
+    },
+    "result_event_refs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "common.schema.json#/$defs/Identifier" }
+    },
+    "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "status": { "const": "active" } },
+        "required": ["status"]
+      },
+      "then": {
+        "required": ["permission_subset_check"],
+        "properties": {
+          "permission_subset_check": {
+            "properties": { "status": { "const": "passed" } },
+            "required": ["status"]
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "Handoff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task_statement",
+        "expected_output",
+        "handoff_artifact_ref",
+        "handoff_event_ref",
+        "content_hash",
+        "classification",
+        "taint"
+      ],
+      "properties": {
+        "task_statement": { "type": "string", "minLength": 1, "maxLength": 8192 },
+        "expected_output": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "handoff_artifact_ref": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "handoff_event_ref": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "content_hash": { "$ref": "common.schema.json#/$defs/Hash" },
+        "classification": { "$ref": "common.schema.json#/$defs/Classification" },
+        "taint": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Taint" }
+        },
+        "context_snapshot_id": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "AllowedContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["context_source_ids", "artifact_revision_ids", "maximum_classification"],
+      "properties": {
+        "context_source_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Identifier" }
+        },
+        "artifact_revision_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Identifier" }
+        },
+        "maximum_classification": { "$ref": "common.schema.json#/$defs/Classification" },
+        "allow_memory": { "type": "boolean", "default": false },
+        "allow_external_content": { "type": "boolean", "default": false },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "AllowedArtifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["read_artifact_revision_ids", "write_resource_patterns", "max_changed_artifacts"],
+      "properties": {
+        "read_artifact_revision_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/Identifier" }
+        },
+        "write_resource_patterns": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 2048 }
+        },
+        "max_changed_artifacts": { "type": "integer", "minimum": 0 },
+        "promotion_authority": {
+          "type": "string",
+          "enum": ["none", "draft_only", "review_request_only"]
+        },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    },
+    "Revocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "revoke_on_close", "terminate_active_calls"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["not_revoked", "pending", "completed", "failed", "not_applicable"]
+        },
+        "revoke_on_close": { "type": "boolean" },
+        "terminate_active_calls": { "type": "boolean" },
+        "revoked_at": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/Timestamp" },
+            { "type": "null" }
+          ]
+        },
+        "revoked_by_actor_id": { "$ref": "common.schema.json#/$defs/NullableIdentifier" },
+        "reason_code": { "type": ["string", "null"], "maxLength": 128 },
+        "extensions": { "$ref": "common.schema.json#/$defs/Extensions" }
+      }
+    }
+  }
+}
